@@ -1,49 +1,327 @@
+@import "tailwindcss";
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --surface: #ffffff;
+  --surface-alt: #f9fafb;
+  --border: #d1d5db;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html {
-  height: 100%;
+/* Theme variables (kept simple for compatibility) */
+:root {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono";
 }
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  width: 100%;
+  /* allow natural scrolling; individual components may use overflow where needed */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  padding: 0;
 }
 
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+input,
+select,
+textarea {
+  color: var(--foreground) !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 1;
 }
 
 * {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #444 #222;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+*::-webkit-scrollbar {
+  width: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #222;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #444;
+  border-radius: 20px;
+  border: 2px solid #222;
+}
+@keyframes gradient-x {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 6s ease infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease forwards;
+}
+/* Container */
+.container {
+  color: #f1f1f1;
+  background: #121212;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.form-control {
+  background: #1e1e1e;
+  color: #f1f1f1;
+  border: 1px solid #444;
+}
+
+.form-control::file-selector-button {
+  background: #333;
+  color: #f1f1f1;
+  border: 1px solid #555;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #1e1e1e;
+  color: #f1f1f1;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  transition:
+    background 0.3s,
+    color 0.3s;
 }
 
 @media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+  .modal-content {
+    background: #1e1e1e;
+    color: #f1f1f1;
   }
+}
+
+/* Buttons */
+.modal-buttons {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-csv,
+.btn-xlsx,
+.btn-cancel {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+/* CSV button */
+.btn-csv {
+  background: #007bff;
+  color: white;
+}
+.btn-csv:hover {
+  background: #0056b3;
+}
+
+/* XLSX button */
+.btn-xlsx {
+  background: #28a745;
+  color: white;
+}
+.btn-xlsx:hover {
+  background: #1c7c31;
+}
+
+/* Cancel button */
+.btn-cancel {
+  background: #dc3545;
+  color: white;
+}
+.btn-cancel:hover {
+  background: #a71d2a;
+}
+.container-main {
+  background: #ffffff;
+  color: #111111;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f9f9f9;
+  color: #111;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .container-main {
+    background: #121212;
+    color: #f1f1f1;
+    box-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
+  }
+
+  .form-control {
+    background: #1e1e1e;
+    color: #f1f1f1;
+    border: 1px solid #444;
+  }
+
+  .form-control::file-selector-button {
+    background: #333;
+    color: #f1f1f1;
+    border: 1px solid #555;
+  }
+}
+@media print {
+  .noprint {
+    display: none;
+  }
+  .nobreak {
+    break-inside: avoid;
+  }
+  @page {
+    size: A4;
+  }
+  body {
+    margin: 0;
+  }
+  @media (orientation: portrait) {
+    body {
+      flex-direction: column;
+    }
+  }
+  /* width */
+  ::-webkit-scrollbar {
+    width: 0;
+  }
+
+  /* Track */
+  ::-webkit-scrollbar-track {
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: none;
+    border-radius: 0;
+  }
+
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: none;
+  }
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Input Number Spinner Remove */
+
+/* Scroll Bar */
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey;
+  border-radius: 5px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: rgb(0, 50, 124);
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #00076e;
+}
+
+/* Scroll Bar */
+
+textarea {
+  resize: none;
+}
+
+input,
+textarea,
+option {
+  text-align: center;
 }

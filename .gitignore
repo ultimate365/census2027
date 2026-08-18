@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+.env
+service_key.json
+uploader.js
+upload.bat
+databases
+files
+test.js
+sample.txt
+server.js
