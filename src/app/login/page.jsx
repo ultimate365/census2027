@@ -212,9 +212,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 border-t border-gray-100 pt-5 text-center">
-            <p className="text-sm text-gray-500">নতুন গণনাকারী?</p>
+            {/* <p className="text-sm text-gray-500">নতুন গণনাকারী?</p>
 
-            {/* <Link
+            <Link
               href="/signup"
               className="mt-1 inline-block text-sm font-bold text-green-700 hover:text-green-800"
             >
