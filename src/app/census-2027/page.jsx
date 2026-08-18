@@ -16,6 +16,8 @@ const Input = ({
   placeholder = "",
   min,
   max,
+  maxLength,
+  pattern,
   readOnly = false,
 }) => (
   <div>
@@ -33,6 +35,8 @@ const Input = ({
       placeholder={placeholder}
       min={min}
       max={max}
+      maxLength={maxLength}
+      pattern={pattern}
       readOnly={readOnly}
       autoCapitalize="characters"
       style={{
@@ -118,6 +122,7 @@ export default function Census2027Page() {
     headName: "",
     headMobile: "",
     selfEnumeration: "",
+    selfEnumerationID: "",
 
     // House
     floorMaterial: "",
@@ -226,7 +231,7 @@ export default function Census2027Page() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   // --------------------------------------------------
   // INPUT CHANGE
@@ -234,8 +239,32 @@ export default function Census2027Page() {
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    const nextValue =
+
+    let nextValue =
       type === "number" || type === "tel" ? value : value.toUpperCase();
+
+    if (name === "selfEnumerationID") {
+      nextValue = value
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 12)
+        .toUpperCase();
+    }
+
+    if (name === "selfEnumeration" && value !== "হ্যাঁ") {
+      nextValue = value;
+      setForm((prev) => ({
+        ...prev,
+        selfEnumeration: nextValue,
+        selfEnumerationID: "",
+      }));
+
+      if (message) {
+        setMessage("");
+        setMessageType("");
+      }
+
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
@@ -383,6 +412,18 @@ export default function Census2027Page() {
     for (const [field, label] of requiredFields) {
       if (!form[field] || String(form[field]).trim() === "") {
         setMessage(`${label} পূরণ করুন।`);
+
+        setMessageType("error");
+
+        return;
+      }
+    }
+
+    if (form.selfEnumeration === "হ্যাঁ") {
+      if (!/^[A-Z0-9]{12}$/.test(form.selfEnumerationID || "")) {
+        setMessage(
+          "Self Enumeration ID অবশ্যই ১২ অক্ষরের Capital Alpha Numeric Code হতে হবে।",
+        );
 
         setMessageType("error");
 
@@ -561,6 +602,9 @@ export default function Census2027Page() {
 
         selfEnumeration: form.selfEnumeration,
 
+        selfEnumerationID:
+          form.selfEnumeration === "হ্যাঁ" ? form.selfEnumerationID : "",
+
         // -------------------------------------------
         // HOUSE
         // -------------------------------------------
@@ -698,6 +742,8 @@ export default function Census2027Page() {
         enumeratorName: currentUser.displayName || form.enumeratorName,
 
         enumeratorMobile: form.enumeratorMobile,
+
+        selfEnumerationID: "",
       });
 
       window.scrollTo({
@@ -984,6 +1030,21 @@ export default function Census2027Page() {
                 options={["হ্যাঁ", "না"]}
               />
             </div>
+
+            {form.selfEnumeration === "হ্যাঁ" && (
+              <div className="mt-4 max-w-md">
+                <Input
+                  label="Self Enumeration ID"
+                  name="selfEnumerationID"
+                  form={form}
+                  onChange={handleChange}
+                  required
+                  placeholder="১২ অক্ষরের Capital Alpha Numeric Code"
+                  maxLength={12}
+                  pattern="[A-Z0-9]{12}"
+                />
+              </div>
+            )}
           </Section>
 
           {/* 4 */}

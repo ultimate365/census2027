@@ -140,14 +140,6 @@ export default function CensusDataPage() {
      LOAD RECORDS
   ======================================================= */
 
-  useEffect(() => {
-    if (!user || !userProfile || userProfile.status !== "active") {
-      return;
-    }
-
-    loadRecords();
-  }, [user, userProfile]);
-
   const loadRecords = async () => {
     try {
       setLoading(true);
@@ -214,6 +206,7 @@ export default function CensusDataPage() {
         record.enumeratorName,
         record.enumeratorMobile,
         record.headMobile,
+        record.selfEnumerationID,
       ]
         .filter(Boolean)
         .join(" ")
@@ -297,9 +290,29 @@ export default function CensusDataPage() {
   const handleEditChange = (e) => {
     const { name, value } = e.target;
 
+    let nextValue = value;
+
+    if (name === "selfEnumeration") {
+      nextValue = value;
+      setEditingRecord((prev) => ({
+        ...prev,
+        selfEnumeration: nextValue,
+        selfEnumerationID:
+          value !== "হ্যাঁ" ? "" : prev.selfEnumerationID || "",
+      }));
+      return;
+    }
+
+    if (name === "selfEnumerationNumber") {
+      nextValue = value
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 12)
+        .toUpperCase();
+    }
+
     setEditingRecord((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -322,7 +335,23 @@ export default function CensusDataPage() {
        * Do not send the local Firestore
        * document ID as a field.
        */
-      const { id, ...dataToSave } = editingRecord;
+      const dataToSave = { ...editingRecord };
+
+      delete dataToSave.id;
+
+      if (dataToSave.selfEnumeration === "হ্যাঁ") {
+        if (!/^[A-Z0-9]{12}$/.test(dataToSave.selfEnumerationID || "")) {
+          setMessage(
+            "Self Enumeration ID অবশ্যই ১২ অক্ষরের Capital Alpha Numeric Code হতে হবে।",
+          );
+
+          setMessageType("error");
+
+          setEditLoading(false);
+
+          return;
+        }
+      }
 
       /*
        * Convert numeric values.
@@ -1127,6 +1156,7 @@ function DetailsModal({
         ["Head Name", record.headName],
         ["Head Mobile", record.headMobile],
         ["Self Enumeration", record.selfEnumeration],
+        ["Self Enumeration ID", record.selfEnumerationID],
         ["Total Members", record.householdMembers],
         ["Male Members", record.maleMembers],
         ["Female Members", record.femaleMembers],
@@ -1436,6 +1466,16 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 value={record.selfEnumeration}
                 onChange={onChange}
               />
+
+              {record.selfEnumeration === "হ্যাঁ" && (
+                <EditInput
+                  label="Self Enumeration ID"
+                  name="selfEnumerationID"
+                  value={record.selfEnumerationID}
+                  onChange={onChange}
+                  maxLength={12}
+                />
+              )}
 
               <EditInput
                 label="Total Members"
@@ -1770,6 +1810,8 @@ function EditInput({
   onChange,
   type = "text",
   readOnly = false,
+  maxLength,
+  pattern,
 }) {
   return (
     <div>
@@ -1783,6 +1825,8 @@ function EditInput({
         value={value ?? ""}
         onChange={onChange}
         readOnly={readOnly}
+        maxLength={maxLength}
+        pattern={pattern}
         className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition ${
           readOnly
             ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-500"
