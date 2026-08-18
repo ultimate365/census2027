@@ -12,6 +12,86 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
+const Input = ({
+  label,
+  name,
+  form,
+  onChange,
+  type = "text",
+  required = false,
+  placeholder = "",
+  min,
+  max,
+  readOnly = false,
+}) => (
+  <div>
+    <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+      {label}
+      {required && <span className="ml-1 text-red-500">*</span>}
+    </label>
+
+    <input
+      type={type}
+      name={name}
+      value={form[name] ?? ""}
+      onChange={onChange}
+      required={required}
+      placeholder={placeholder}
+      min={min}
+      max={max}
+      readOnly={readOnly}
+      autoCapitalize="characters"
+      style={{
+        textTransform:
+          type !== "number" && type !== "tel" ? "uppercase" : "none",
+      }}
+      className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+        readOnly
+          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-600"
+          : "border-gray-300 bg-white"
+      }`}
+    />
+  </div>
+);
+
+const Select = ({ label, name, form, onChange, options, required = false }) => (
+  <div>
+    <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+      {label}
+      {required && <span className="ml-1 text-red-500">*</span>}
+    </label>
+
+    <select
+      name={name}
+      value={form[name] ?? ""}
+      onChange={onChange}
+      required={required}
+      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+    >
+      <option value="">-- নির্বাচন করুন --</option>
+      {options.map((option, index) => (
+        <option key={`${name}-${index}`} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const Section = ({ number, title, children }) => (
+  <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex items-center gap-3 border-b border-green-100 bg-green-50 px-4 py-3 sm:px-5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-700 text-sm font-bold text-white">
+        {number}
+      </span>
+
+      <h2 className="text-base font-bold text-gray-800 sm:text-lg">{title}</h2>
+    </div>
+
+    <div className="p-4 sm:p-5">{children}</div>
+  </section>
+);
+
 export default function Census2027Page() {
   const router = useRouter();
 
@@ -33,10 +113,10 @@ export default function Census2027Page() {
     block: "AMTA-II",
     gramPanchayat: "THALIA",
     ward: "",
-    village: "",
+    village: "SEHAGORI",
     locality: "",
-    houseAddress: "",
-    pinCode: "",
+    houseAddress: "SEHAGORI, THALIA, AMTA-II, HOWRAH, WEST BENGAL",
+    pinCode: "711401",
 
     // GPS
     latitude: "",
@@ -48,6 +128,7 @@ export default function Census2027Page() {
     headName: "",
     headMobile: "",
     selfEnumeration: "",
+    selfEnumerationID: "",
 
     // House
     floorMaterial: "",
@@ -273,11 +354,36 @@ export default function Census2027Page() {
   // =====================================================
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+
+    let nextValue =
+      type === "number" || type === "tel" ? value : value.toUpperCase();
+
+    if (name === "selfEnumerationID") {
+      nextValue = value
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 12)
+        .toUpperCase();
+    }
+
+    if (name === "selfEnumeration" && value !== "হ্যাঁ") {
+      setForm((prev) => ({
+        ...prev,
+        selfEnumeration: value,
+        selfEnumerationID: "",
+      }));
+
+      if (message) {
+        setMessage("");
+        setMessageType("");
+      }
+
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
 
     if (message) {
@@ -465,6 +571,18 @@ export default function Census2027Page() {
     for (const [field, label] of requiredFields) {
       if (!form[field] || String(form[field]).trim() === "") {
         setMessage(`${label} পূরণ করুন।`);
+
+        setMessageType("error");
+
+        return;
+      }
+    }
+
+    if (form.selfEnumeration === "হ্যাঁ") {
+      if (!/^[A-Z0-9]{12}$/.test(String(form.selfEnumerationID || ""))) {
+        setMessage(
+          "Self Enumeration ID অবশ্যই ১২ অক্ষরের Capital Alpha Numeric Code হতে হবে।",
+        );
 
         setMessageType("error");
 
@@ -678,6 +796,9 @@ export default function Census2027Page() {
 
         selfEnumeration: form.selfEnumeration,
 
+        selfEnumerationID:
+          form.selfEnumeration === "হ্যাঁ" ? form.selfEnumerationID : "",
+
         // -------------------------------------------
         // HOUSE
         // -------------------------------------------
@@ -841,96 +962,6 @@ export default function Census2027Page() {
   };
 
   // =====================================================
-  // REUSABLE INPUT
-  // =====================================================
-
-  const Input = ({
-    label,
-    name,
-    type = "text",
-    required = false,
-    placeholder = "",
-    min,
-    max,
-    readOnly = false,
-  }) => (
-    <div>
-      <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-        {label}
-
-        {required && <span className="ml-1 text-red-500">*</span>}
-      </label>
-
-      <input
-        type={type}
-        name={name}
-        value={form[name] ?? ""}
-        onChange={handleChange}
-        required={required}
-        placeholder={placeholder}
-        min={min}
-        max={max}
-        readOnly={readOnly}
-        className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
-          readOnly
-            ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-600"
-            : "border-gray-300 bg-white"
-        }`}
-      />
-    </div>
-  );
-
-  // =====================================================
-  // SELECT
-  // =====================================================
-
-  const Select = ({ label, name, options, required = false }) => (
-    <div>
-      <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-        {label}
-
-        {required && <span className="ml-1 text-red-500">*</span>}
-      </label>
-
-      <select
-        name={name}
-        value={form[name] ?? ""}
-        onChange={handleChange}
-        required={required}
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
-      >
-        <option value="">-- নির্বাচন করুন --</option>
-
-        {options.map((option, index) => (
-          <option key={`${name}-${index}`} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
-  // =====================================================
-  // SECTION
-  // =====================================================
-
-  const Section = ({ number, title, children }) => (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-green-100 bg-green-50 px-4 py-3 sm:px-5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-700 text-sm font-bold text-white">
-          {number}
-        </span>
-
-        <h2 className="text-base font-bold text-gray-800 sm:text-lg">
-          {title}
-        </h2>
-      </div>
-
-      <div className="p-4 sm:p-5">{children}</div>
-    </section>
-  );
-
-  // =====================================================
   // AUTH LOADING
   // =====================================================
 
@@ -1024,6 +1055,8 @@ export default function Census2027Page() {
               <Input
                 label="Household ID"
                 name="householdId"
+                form={form}
+                onChange={handleChange}
                 required
                 readOnly
               />
@@ -1031,6 +1064,8 @@ export default function Census2027Page() {
               <Input
                 label="Enumerator ID"
                 name="enumeratorId"
+                form={form}
+                onChange={handleChange}
                 required
                 placeholder="গণনাকারীর ID"
               />
@@ -1038,6 +1073,8 @@ export default function Census2027Page() {
               <Input
                 label="গণনাকারীর নাম"
                 name="enumeratorName"
+                form={form}
+                onChange={handleChange}
                 required
                 placeholder="পূর্ণ নাম"
               />
@@ -1045,6 +1082,8 @@ export default function Census2027Page() {
               <Input
                 label="গণনাকারীর মোবাইল"
                 name="enumeratorMobile"
+                form={form}
+                onChange={handleChange}
                 type="tel"
                 required
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
@@ -1058,25 +1097,72 @@ export default function Census2027Page() {
 
           <Section number="২" title="ঠিকানা ও প্রশাসনিক তথ্য">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Input label="রাজ্য" name="state" required readOnly />
+              <Input
+                label="রাজ্য"
+                name="state"
+                form={form}
+                onChange={handleChange}
+                required
+                readOnly
+              />
 
-              <Input label="জেলা" name="district" required />
+              <Input
+                label="জেলা"
+                name="district"
+                form={form}
+                onChange={handleChange}
+                required
+              />
 
-              <Input label="মহকুমা / Subdivision" name="subdivision" />
+              <Input
+                label="মহকুমা / Subdivision"
+                name="subdivision"
+                form={form}
+                onChange={handleChange}
+              />
 
-              <Input label="ব্লক / Municipality" name="block" required />
+              <Input
+                label="ব্লক / Municipality"
+                name="block"
+                form={form}
+                onChange={handleChange}
+                required
+              />
 
-              <Input label="গ্রাম পঞ্চায়েত" name="gramPanchayat" />
+              <Input
+                label="গ্রাম পঞ্চায়েত"
+                name="gramPanchayat"
+                form={form}
+                onChange={handleChange}
+              />
 
-              <Input label="ওয়ার্ড নং" name="ward" />
+              <Input
+                label="ওয়ার্ড নং"
+                name="ward"
+                form={form}
+                onChange={handleChange}
+              />
 
-              <Input label="গ্রাম / Locality" name="village" required />
+              <Input
+                label="গ্রাম / Locality"
+                name="village"
+                form={form}
+                onChange={handleChange}
+                required
+              />
 
-              <Input label="পাড়া / Locality" name="locality" />
+              <Input
+                label="পাড়া / Locality"
+                name="locality"
+                form={form}
+                onChange={handleChange}
+              />
 
               <Input
                 label="PIN Code"
                 name="pinCode"
+                form={form}
+                onChange={handleChange}
                 type="text"
                 max="6"
                 placeholder="৬ সংখ্যার PIN"
@@ -1096,6 +1182,8 @@ export default function Census2027Page() {
                 required
                 rows={3}
                 placeholder="বাড়ির পূর্ণ ঠিকানা লিখুন"
+                autoCapitalize="characters"
+                style={{ textTransform: "uppercase" }}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
               />
             </div>
@@ -1107,13 +1195,27 @@ export default function Census2027Page() {
 
           <Section number="৩" title="Building ও Census তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input label="Building No." name="buildingNo" required />
+              <Input
+                label="Building No."
+                name="buildingNo"
+                form={form}
+                onChange={handleChange}
+                required
+              />
 
-              <Input label="Census No." name="censusNo" required />
+              <Input
+                label="Census No."
+                name="censusNo"
+                form={form}
+                onChange={handleChange}
+                required
+              />
 
               <Input
                 label="গৃহপ্রধানের নাম"
                 name="headName"
+                form={form}
+                onChange={handleChange}
                 required
                 placeholder="গৃহপ্রধানের পূর্ণ নাম"
               />
@@ -1121,6 +1223,8 @@ export default function Census2027Page() {
               <Input
                 label="গৃহপ্রধানের মোবাইল"
                 name="headMobile"
+                form={form}
+                onChange={handleChange}
                 type="tel"
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
               />
@@ -1130,10 +1234,27 @@ export default function Census2027Page() {
               <Select
                 label="Self Enumeration করেছেন কি না?"
                 name="selfEnumeration"
+                form={form}
+                onChange={handleChange}
                 required
                 options={["হ্যাঁ", "না"]}
               />
             </div>
+
+            {form.selfEnumeration === "হ্যাঁ" && (
+              <div className="mt-4 max-w-md">
+                <Input
+                  label="Self Enumeration ID"
+                  name="selfEnumerationID"
+                  form={form}
+                  onChange={handleChange}
+                  required
+                  placeholder="১২ অক্ষরের Capital Alpha Numeric Code"
+                  maxLength={12}
+                  pattern="[A-Z0-9]{12}"
+                />
+              </div>
+            )}
           </Section>
 
           {/* =================================================
@@ -1145,6 +1266,8 @@ export default function Census2027Page() {
               <Select
                 label="মেঝের প্রধান উপাদান"
                 name="floorMaterial"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "মাটি",
                   "কাঠ/বাঁশ",
@@ -1159,6 +1282,8 @@ export default function Census2027Page() {
               <Select
                 label="দেওয়ালের প্রধান উপাদান"
                 name="wallMaterial"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "ঘাস/খড়/বাঁশ",
                   "প্লাস্টিক/পলিথিন",
@@ -1176,6 +1301,8 @@ export default function Census2027Page() {
               <Select
                 label="ছাদের প্রধান উপাদান"
                 name="roofMaterial"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "ঘাস/খড়/বাঁশ",
                   "কাঠ",
@@ -1203,6 +1330,8 @@ export default function Census2027Page() {
               <Select
                 label="এই সেন্সাস গৃহের প্রকৃত ব্যবহার"
                 name="houseUse"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "বাসগৃহ",
                   "বাসগৃহ-সহ অন্যান্য",
@@ -1220,6 +1349,8 @@ export default function Census2027Page() {
               <Select
                 label="এই সেন্সাস গৃহের বর্তমান অবস্থা"
                 name="houseCondition"
+                form={form}
+                onChange={handleChange}
                 options={["ভালো", "বাসযোগ্য", "ক্ষতিগ্রস্ত"]}
               />
             </div>
@@ -1234,18 +1365,36 @@ export default function Census2027Page() {
               <Input
                 label="পরিবারের মোট সদস্য"
                 name="householdMembers"
+                form={form}
+                onChange={handleChange}
                 type="number"
                 min="0"
                 required
               />
 
-              <Input label="পুরুষ" name="maleMembers" type="number" min="0" />
+              <Input
+                label="পুরুষ"
+                name="maleMembers"
+                form={form}
+                onChange={handleChange}
+                type="number"
+                min="0"
+              />
 
-              <Input label="মহিলা" name="femaleMembers" type="number" min="0" />
+              <Input
+                label="মহিলা"
+                name="femaleMembers"
+                form={form}
+                onChange={handleChange}
+                type="number"
+                min="0"
+              />
 
               <Input
                 label="অন্যান্য"
                 name="otherMembers"
+                form={form}
+                onChange={handleChange}
                 type="number"
                 min="0"
               />
@@ -1255,6 +1404,8 @@ export default function Census2027Page() {
               <Input
                 label="বিবাহিত দম্পতির সংখ্যা"
                 name="marriedCouples"
+                form={form}
+                onChange={handleChange}
                 type="number"
                 min="0"
               />
@@ -1270,12 +1421,16 @@ export default function Census2027Page() {
               <Select
                 label="পরিবারের প্রধানের জাতি"
                 name="caste"
+                form={form}
+                onChange={handleChange}
                 options={["তপশিলি জাতি", "তপশিলি উপজাতি", "অন্যান্য"]}
               />
 
               <Select
                 label="গৃহের মালিকানা"
                 name="houseOwnership"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "নিজের",
                   "ভাড়া, অন্য বাড়ি আছে",
@@ -1295,6 +1450,8 @@ export default function Census2027Page() {
               <Select
                 label="পানীয় জলের প্রধান উৎস"
                 name="drinkingWaterSource"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "পরিশুদ্ধ কলের জল",
                   "অ-পরিশুদ্ধ কলের জল",
@@ -1312,6 +1469,8 @@ export default function Census2027Page() {
               <Select
                 label="পানীয় জলের উৎসটি কোথায়?"
                 name="drinkingWaterLocation"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "বাড়ির চৌহদ্দির মধ্যে",
                   "বাড়ির চৌহদ্দির কাছে",
@@ -1329,6 +1488,8 @@ export default function Census2027Page() {
             <Select
               label="আলোর প্রধান উৎস"
               name="lightingSource"
+              form={form}
+              onChange={handleChange}
               options={[
                 "বিদ্যুৎ",
                 "কেরোসিন",
@@ -1349,6 +1510,8 @@ export default function Census2027Page() {
               <Select
                 label="শৌচালয়ের উপলভ্যতা"
                 name="latrineAvailability"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "শুধু এই পরিবারের",
                   "যৌথভাবে",
@@ -1360,6 +1523,8 @@ export default function Census2027Page() {
               <Select
                 label="শৌচালয়ের ধরন"
                 name="latrineType"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "নলবাহিত পূর্ণশৌচালয়",
                   "সেপটিক ট্যাঙ্ক",
@@ -1376,12 +1541,16 @@ export default function Census2027Page() {
               <Select
                 label="বর্জ্য জলের নিষ্কাশন"
                 name="wasteWaterDrain"
+                form={form}
+                onChange={handleChange}
                 options={["ঢাকা নর্দমা", "খোলা নর্দমা", "কোন নর্দমা নেই"]}
               />
 
               <Select
                 label="বাড়ির মধ্যে স্নানের ব্যবস্থা"
                 name="bathingArrangement"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "স্নানের ঘর আছে",
                   "ছাদবিহীন ঘেরা জায়গা আছে",
@@ -1400,6 +1569,8 @@ export default function Census2027Page() {
               <Select
                 label="রান্নার গ্যাস (LPG/CNG) সংযোগের অবস্থা"
                 name="cookingGas"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "সংযোগ আছে",
                   "সংযোগ নেই",
@@ -1412,6 +1583,8 @@ export default function Census2027Page() {
               <Select
                 label="রান্নায় ব্যবহৃত প্রধান জ্বালানি"
                 name="cookingFuel"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "জ্বালানি কাঠ",
                   "গোবরের পরিত্যক্ত অংশ",
@@ -1437,6 +1610,8 @@ export default function Census2027Page() {
               <Select
                 label="রেডিও / ট্রানজিস্টর"
                 name="radio"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "সাধারণ রেডিও",
                   "মোবাইল/স্মার্টফোন",
@@ -1448,6 +1623,8 @@ export default function Census2027Page() {
               <Select
                 label="টেলিভিশন"
                 name="television"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "দূরদর্শন DTH",
                   "স্যাটেলাইট",
@@ -1461,6 +1638,8 @@ export default function Census2027Page() {
               <Select
                 label="ইন্টারনেট"
                 name="internet"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "মোবাইল ডেটা",
                   "ব্রডব্যান্ড",
@@ -1473,12 +1652,16 @@ export default function Census2027Page() {
               <Select
                 label="ল্যাপটপ / কম্পিউটার"
                 name="laptopComputer"
+                form={form}
+                onChange={handleChange}
                 options={["হ্যাঁ", "না"]}
               />
 
               <Select
                 label="টেলিফোন / মোবাইল ফোন"
                 name="mobilePhone"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "ল্যান্ডলাইন",
                   "সাধারণ মোবাইল",
@@ -1491,6 +1674,8 @@ export default function Census2027Page() {
               <Select
                 label="সাইকেল / স্কুটার / মোটরসাইকেল / মোপেড"
                 name="bicycleVehicle"
+                form={form}
+                onChange={handleChange}
                 options={[
                   "সাইকেল",
                   "স্কুটার/মোটরসাইকেল/মোপেড",
@@ -1502,12 +1687,16 @@ export default function Census2027Page() {
               <Select
                 label="চার চাকার গাড়ি / জিপ / মোটর ভ্যান"
                 name="carVan"
+                form={form}
+                onChange={handleChange}
                 options={["হ্যাঁ", "না"]}
               />
 
               <Select
                 label="প্রধান খাদ্যশস্য"
                 name="mainFoodGrain"
+                form={form}
+                onChange={handleChange}
                 options={["ধান", "গম", "জোয়ার", "বাজরা", "ভুট্টা", "অন্যান্য"]}
               />
             </div>

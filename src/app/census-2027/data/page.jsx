@@ -303,7 +303,7 @@ export default function CensusDataPage() {
       return;
     }
 
-    if (name === "selfEnumerationNumber") {
+    if (name === "selfEnumerationID") {
       nextValue = value
         .replace(/[^A-Z0-9]/g, "")
         .slice(0, 12)

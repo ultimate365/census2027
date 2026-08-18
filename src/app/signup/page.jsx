@@ -681,7 +681,7 @@ export default function SignupPage() {
                 SUBMIT
             ================================================= */}
 
-            {/* <button
+            <button
               type="submit"
               disabled={loading}
               className="w-full rounded-xl bg-green-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-green-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
@@ -694,7 +694,7 @@ export default function SignupPage() {
               ) : (
                 "✓ Create Enumerator Account"
               )}
-            </button> */}
+            </button>
           </form>
 
           {/* =================================================
