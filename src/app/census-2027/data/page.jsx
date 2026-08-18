@@ -136,6 +136,12 @@ export default function CensusDataPage() {
     return () => unsubscribe();
   }, [router]);
 
+  useEffect(() => {
+    if (!checkingAuth && user && userProfile?.status === "active") {
+      loadRecords();
+    }
+  }, [checkingAuth, user, userProfile]);
+
   /* =======================================================
      LOAD RECORDS
   ======================================================= */
