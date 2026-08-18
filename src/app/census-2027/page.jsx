@@ -1,128 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-
-const Input = ({
-  label,
-  name,
-  form,
-  onChange,
-  type = "text",
-  required = false,
-  placeholder = "",
-  min,
-  max,
-  maxLength,
-  pattern,
-  readOnly = false,
-}) => (
-  <div>
-    <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-      {label}
-      {required && <span className="ml-1 text-red-500">*</span>}
-    </label>
-
-    <input
-      type={type}
-      name={name}
-      value={form[name] ?? ""}
-      onChange={onChange}
-      required={required}
-      placeholder={placeholder}
-      min={min}
-      max={max}
-      maxLength={maxLength}
-      pattern={pattern}
-      readOnly={readOnly}
-      autoCapitalize="characters"
-      style={{
-        textTransform:
-          type !== "number" && type !== "tel" ? "uppercase" : "none",
-      }}
-      className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
-        readOnly
-          ? "cursor-not-allowed bg-gray-100 text-gray-600"
-          : "border-gray-300 bg-white"
-      }`}
-    />
-  </div>
-);
-
-const Select = ({ label, name, form, onChange, options, required = false }) => (
-  <div>
-    <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-      {label}
-      {required && <span className="ml-1 text-red-500">*</span>}
-    </label>
-
-    <select
-      name={name}
-      value={form[name] ?? ""}
-      onChange={onChange}
-      required={required}
-      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
-    >
-      <option value="">-- নির্বাচন করুন --</option>
-      {options.map((option, index) => (
-        <option key={`${name}-${index}`} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
-  </div>
-);
-
-const Section = ({ number, title, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-    <div className="flex items-center gap-3 border-b border-green-100 bg-green-50 px-4 py-3 sm:px-5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-700 text-sm font-bold text-white">
-        {number}
-      </span>
-
-      <h2 className="text-base font-bold text-gray-800 sm:text-lg">{title}</h2>
-    </div>
-
-    <div className="p-4 sm:p-5">{children}</div>
-  </section>
-);
 
 export default function Census2027Page() {
   const router = useRouter();
 
+  // =====================================================
+  // INITIAL FORM
+  // =====================================================
+
   const initialForm = {
-    // Survey information
+    // Survey
     householdId: "",
     enumeratorId: "ev_2018002_skmaidulis",
     enumeratorName: "SK MAIDUL ISLAM",
     enumeratorMobile: "9933684468",
 
-    // Administrative information
+    // Address
     state: "West Bengal",
     district: "HOWRAH",
     subdivision: "ULUBERIA",
     block: "AMTA-II",
     gramPanchayat: "THALIA",
     ward: "",
-    village: "SEHAGORI",
-    locality: "SEHAGORI",
+    village: "",
+    locality: "",
     houseAddress: "",
-    pinCode: "711401",
+    pinCode: "",
 
-    // Location
+    // GPS
     latitude: "",
     longitude: "",
 
-    // Census information
+    // Census
     buildingNo: "",
     censusNo: "",
     headName: "",
     headMobile: "",
     selfEnumeration: "",
-    selfEnumerationID: "",
 
     // House
     floorMaterial: "",
@@ -157,7 +82,7 @@ export default function Census2027Page() {
     cookingGas: "",
     cookingFuel: "",
 
-    // Assets / facilities
+    // Technology / Assets
     radio: "",
     television: "",
     internet: "",
@@ -172,17 +97,29 @@ export default function Census2027Page() {
 
   const [form, setForm] = useState(initialForm);
 
+  // =====================================================
+  // AUTH
+  // =====================================================
+
   const [user, setUser] = useState(null);
+
+  const [userProfile, setUserProfile] = useState(null);
+
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // =====================================================
+  // SUBMISSION
+  // =====================================================
 
   const [loading, setLoading] = useState(false);
 
   const [message, setMessage] = useState("");
+
   const [messageType, setMessageType] = useState("");
 
-  // --------------------------------------------------
-  // GENERATE HOUSEHOLD ID
-  // --------------------------------------------------
+  // =====================================================
+  // HOUSEHOLD ID
+  // =====================================================
 
   const generateHouseholdId = () => {
     const now = new Date();
@@ -199,76 +136,148 @@ export default function Census2027Page() {
 
     const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
 
-    return `CN-${datePart}-${timePart}-${randomPart}`;
+    return `C27-${datePart}-${timePart}-${randomPart}`;
   };
 
-  // --------------------------------------------------
-  // AUTHENTICATION
-  // --------------------------------------------------
+  // =====================================================
+  // AUTHENTICATION + PROFILE CHECK
+  // =====================================================
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let mounted = true;
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!mounted) return;
+
+      // ---------------------------------------------
+      // NOT LOGGED IN
+      // ---------------------------------------------
+
       if (!currentUser) {
         setUser(null);
+        setUserProfile(null);
         setCheckingAuth(false);
+
         router.replace("/");
+
         return;
       }
 
-      setUser(currentUser);
-      setCheckingAuth(false);
+      try {
+        setCheckingAuth(true);
 
-      setForm((prev) => ({
-        ...prev,
-        householdId: prev.householdId || generateHouseholdId(),
-        enumeratorName: prev.enumeratorName || currentUser.displayName || "",
-        enumeratorMobile:
-          prev.enumeratorMobile ||
-          currentUser.phoneNumber ||
-          prev.enumeratorMobile ||
-          "",
-      }));
+        // -------------------------------------------
+        // GET FIRESTORE USER PROFILE
+        // -------------------------------------------
+
+        const profileRef = doc(db, "enumerators", currentUser.uid);
+
+        const profileSnap = await getDoc(profileRef);
+
+        if (!mounted) return;
+
+        // -------------------------------------------
+        // PROFILE DOES NOT EXIST
+        // -------------------------------------------
+
+        if (!profileSnap.exists()) {
+          console.error("Enumerator profile not found.");
+
+          setUser(null);
+          setUserProfile(null);
+          setCheckingAuth(false);
+
+          router.replace("/");
+
+          return;
+        }
+
+        const profile = profileSnap.data();
+
+        // -------------------------------------------
+        // CHECK ACTIVE STATUS
+        // -------------------------------------------
+
+        const isActive = profile.status === "active";
+
+        const validRole =
+          profile.role === "enumerator" || profile.role === "admin";
+
+        if (!isActive || !validRole) {
+          console.warn("User is not active:", profile);
+
+          setUser(null);
+          setUserProfile(profile);
+          setCheckingAuth(false);
+
+          router.replace("/");
+
+          return;
+        }
+
+        // -------------------------------------------
+        // AUTHORIZED
+        // -------------------------------------------
+
+        setUser(currentUser);
+
+        setUserProfile(profile);
+
+        // -------------------------------------------
+        // PRE-FILL FORM
+        // -------------------------------------------
+
+        setForm((prev) => ({
+          ...prev,
+
+          householdId: prev.householdId || generateHouseholdId(),
+
+          enumeratorId: profile.enumeratorId || prev.enumeratorId || "",
+
+          enumeratorName:
+            profile.name ||
+            currentUser.displayName ||
+            prev.enumeratorName ||
+            "",
+
+          enumeratorMobile:
+            profile.mobile || profile.phone || prev.enumeratorMobile || "",
+        }));
+
+        setCheckingAuth(false);
+      } catch (error) {
+        console.error("Authentication/profile error:", error);
+
+        if (!mounted) return;
+
+        setUser(null);
+        setUserProfile(null);
+        setCheckingAuth(false);
+
+        setMessage("আপনার account যাচাই করা যায়নি।");
+
+        setMessageType("error");
+
+        router.replace("/");
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [router]);
 
-  // --------------------------------------------------
-  // INPUT CHANGE
-  // --------------------------------------------------
+  // =====================================================
+  // HANDLE INPUT
+  // =====================================================
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
-
-    let nextValue =
-      type === "number" || type === "tel" ? value : value.toUpperCase();
-
-    if (name === "selfEnumerationID") {
-      nextValue = value
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 12)
-        .toUpperCase();
-    }
-
-    if (name === "selfEnumeration" && value !== "হ্যাঁ") {
-      nextValue = value;
-      setForm((prev) => ({
-        ...prev,
-        selfEnumeration: nextValue,
-        selfEnumerationID: "",
-      }));
-
-      if (message) {
-        setMessage("");
-        setMessageType("");
-      }
-
-      return;
-    }
+    const { name, value } = e.target;
 
     setForm((prev) => ({
       ...prev,
-      [name]: nextValue,
+      [name]: value,
     }));
 
     if (message) {
@@ -277,9 +286,9 @@ export default function Census2027Page() {
     }
   };
 
-  // --------------------------------------------------
-  // GPS LOCATION
-  // --------------------------------------------------
+  // =====================================================
+  // GPS
+  // =====================================================
 
   const captureLocation = () => {
     if (!navigator.geolocation) {
@@ -296,12 +305,14 @@ export default function Census2027Page() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const latitude = position.coords.latitude.toFixed(7);
+
+        const longitude = position.coords.longitude.toFixed(7);
+
         setForm((prev) => ({
           ...prev,
-
-          latitude: position.coords.latitude.toFixed(7),
-
-          longitude: position.coords.longitude.toFixed(7),
+          latitude,
+          longitude,
         }));
 
         setMessage("GPS Location সফলভাবে সংগ্রহ করা হয়েছে।");
@@ -310,26 +321,23 @@ export default function Census2027Page() {
       },
 
       (error) => {
-        console.error(error);
+        console.error("GPS error:", error);
 
         let errorMessage = "GPS Location সংগ্রহ করা যায়নি।";
 
         if (error.code === 1) {
           errorMessage =
             "Location permission দেওয়া হয়নি। Browser settings থেকে Location permission দিন।";
-        }
-
-        if (error.code === 2) {
+        } else if (error.code === 2) {
           errorMessage =
             "বর্তমানে Location পাওয়া যাচ্ছে না। GPS চালু করে আবার চেষ্টা করুন।";
-        }
-
-        if (error.code === 3) {
+        } else if (error.code === 3) {
           errorMessage =
             "Location সংগ্রহ করতে বেশি সময় লাগছে। আবার চেষ্টা করুন।";
         }
 
         setMessage(errorMessage);
+
         setMessageType("error");
       },
 
@@ -341,9 +349,9 @@ export default function Census2027Page() {
     );
   };
 
-  // --------------------------------------------------
-  // RESET FORM
-  // --------------------------------------------------
+  // =====================================================
+  // RESET
+  // =====================================================
 
   const resetForm = () => {
     setForm({
@@ -351,9 +359,11 @@ export default function Census2027Page() {
 
       householdId: generateHouseholdId(),
 
-      enumeratorName: user?.displayName || "",
+      enumeratorId: userProfile?.enumeratorId || "",
 
-      enumeratorMobile: "",
+      enumeratorName: userProfile?.name || user?.displayName || "",
+
+      enumeratorMobile: userProfile?.mobile || userProfile?.phone || "",
     });
 
     setMessage("");
@@ -365,23 +375,23 @@ export default function Census2027Page() {
     });
   };
 
-  // --------------------------------------------------
+  // =====================================================
   // SUBMIT
-  // --------------------------------------------------
+  // =====================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (loading) return;
 
-    // -----------------------------------------------
-    // AUTH CHECK
-    // -----------------------------------------------
+    // =================================================
+    // AUTHENTICATION CHECK
+    // =================================================
 
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      setMessage("তথ্য জমা দেওয়ার আগে Login করুন।");
+      setMessage("আপনি Login করা নেই। আবার Login করুন।");
 
       setMessageType("error");
 
@@ -390,9 +400,52 @@ export default function Census2027Page() {
       return;
     }
 
-    // -----------------------------------------------
+    // =================================================
+    // PROFILE CHECK AGAIN
+    // =================================================
+
+    try {
+      const profileRef = doc(db, "enumerators", currentUser.uid);
+
+      const profileSnap = await getDoc(profileRef);
+
+      if (!profileSnap.exists()) {
+        setMessage("আপনার Enumerator profile পাওয়া যায়নি।");
+
+        setMessageType("error");
+
+        return;
+      }
+
+      const profile = profileSnap.data();
+
+      const isActive = profile.status === "active";
+
+      const validRole =
+        profile.role === "enumerator" || profile.role === "admin";
+
+      if (!isActive || !validRole) {
+        setMessage(
+          "আপনার account এখনো active নয়। Administrator-এর সঙ্গে যোগাযোগ করুন।",
+        );
+
+        setMessageType("error");
+
+        return;
+      }
+    } catch (error) {
+      console.error("Profile validation error:", error);
+
+      setMessage("আপনার account যাচাই করা যায়নি।");
+
+      setMessageType("error");
+
+      return;
+    }
+
+    // =================================================
     // REQUIRED FIELDS
-    // -----------------------------------------------
+    // =================================================
 
     const requiredFields = [
       ["enumeratorId", "Enumerator ID"],
@@ -419,23 +472,11 @@ export default function Census2027Page() {
       }
     }
 
-    if (form.selfEnumeration === "হ্যাঁ") {
-      if (!/^[A-Z0-9]{12}$/.test(form.selfEnumerationID || "")) {
-        setMessage(
-          "Self Enumeration ID অবশ্যই ১২ অক্ষরের Capital Alpha Numeric Code হতে হবে।",
-        );
-
-        setMessageType("error");
-
-        return;
-      }
-    }
-
-    // -----------------------------------------------
+    // =================================================
     // MOBILE VALIDATION
-    // -----------------------------------------------
+    // =================================================
 
-    if (!/^[6-9]\d{9}$/.test(form.enumeratorMobile)) {
+    if (!/^[6-9]\d{9}$/.test(String(form.enumeratorMobile).trim())) {
       setMessage("গণনাকারীর সঠিক ১০ সংখ্যার মোবাইল নম্বর দিন।");
 
       setMessageType("error");
@@ -443,7 +484,10 @@ export default function Census2027Page() {
       return;
     }
 
-    if (form.headMobile && !/^[6-9]\d{9}$/.test(form.headMobile)) {
+    if (
+      form.headMobile &&
+      !/^[6-9]\d{9}$/.test(String(form.headMobile).trim())
+    ) {
       setMessage("গৃহপ্রধানের সঠিক ১০ সংখ্যার মোবাইল নম্বর দিন।");
 
       setMessageType("error");
@@ -451,11 +495,11 @@ export default function Census2027Page() {
       return;
     }
 
-    // -----------------------------------------------
-    // PIN VALIDATION
-    // -----------------------------------------------
+    // =================================================
+    // PIN
+    // =================================================
 
-    if (form.pinCode && !/^\d{6}$/.test(form.pinCode)) {
+    if (form.pinCode && !/^\d{6}$/.test(String(form.pinCode).trim())) {
       setMessage("সঠিক ৬ সংখ্যার PIN Code দিন।");
 
       setMessageType("error");
@@ -463,9 +507,9 @@ export default function Census2027Page() {
       return;
     }
 
-    // -----------------------------------------------
+    // =================================================
     // MEMBER VALIDATION
-    // -----------------------------------------------
+    // =================================================
 
     const totalMembers = Number(form.householdMembers || 0);
 
@@ -487,15 +531,16 @@ export default function Census2027Page() {
       return;
     }
 
-    // -----------------------------------------------
+    // =================================================
     // GPS VALIDATION
-    // -----------------------------------------------
+    // =================================================
 
-    if (form.latitude && form.longitude) {
-      const lat = Number(form.latitude);
-      const lng = Number(form.longitude);
+    if (form.latitude || form.longitude) {
+      const latitude = Number(form.latitude);
 
-      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      const longitude = Number(form.longitude);
+
+      if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
         setMessage("GPS Latitude / Longitude সঠিক নয়।");
 
         setMessageType("error");
@@ -504,9 +549,9 @@ export default function Census2027Page() {
       }
     }
 
-    // -----------------------------------------------
-    // CONFIRM
-    // -----------------------------------------------
+    // =================================================
+    // CONFIRMATION
+    // =================================================
 
     const confirmed = window.confirm(
       "আপনি কি নিশ্চিত যে সমস্ত তথ্য সঠিকভাবে পূরণ করেছেন?\n\nতথ্য জমা দেওয়ার আগে একবার ভালোভাবে পরীক্ষা করুন।",
@@ -516,9 +561,9 @@ export default function Census2027Page() {
       return;
     }
 
-    // -----------------------------------------------
-    // START SAVING
-    // -----------------------------------------------
+    // =================================================
+    // SAVE
+    // =================================================
 
     setLoading(true);
 
@@ -527,37 +572,68 @@ export default function Census2027Page() {
     setMessageType("info");
 
     try {
+      // -----------------------------------------------
+      // FRESH PROFILE
+      // -----------------------------------------------
+
+      const profileRef = doc(db, "enumerators", currentUser.uid);
+
+      const profileSnap = await getDoc(profileRef);
+
+      if (!profileSnap.exists()) {
+        throw new Error("Enumerator profile পাওয়া যায়নি।");
+      }
+
+      const profile = profileSnap.data();
+
+      if (profile.status !== "active") {
+        throw new Error("আপনার account active নয়।");
+      }
+
+      if (profile.role !== "enumerator" && profile.role !== "admin") {
+        throw new Error("আপনার account-এর Census data submit করার অনুমতি নেই।");
+      }
+
+      // -----------------------------------------------
+      // HOUSEHOLD ID
+      // -----------------------------------------------
+
       const householdId = form.householdId || generateHouseholdId();
 
-      // ---------------------------------------------
-      // DATA TO FIRESTORE
-      // ---------------------------------------------
+      // -----------------------------------------------
+      // DATA
+      // -----------------------------------------------
 
       const docData = {
         // -------------------------------------------
-        // HOUSEHOLD IDENTIFICATION
+        // IDENTIFICATION
         // -------------------------------------------
 
         householdId,
 
         surveyYear: 2027,
 
+        status: "submitted",
+
+        source: "census-2027-web",
+
         // -------------------------------------------
-        // AUTHENTICATED ENUMERATOR
+        // AUTHENTICATED USER
         // -------------------------------------------
 
         enumeratorUid: currentUser.uid,
 
         enumeratorEmail: currentUser.email || "",
 
-        enumeratorName: currentUser.displayName || form.enumeratorName || "",
-
         enumeratorId: form.enumeratorId,
+
+        enumeratorName:
+          profile.name || currentUser.displayName || form.enumeratorName || "",
 
         enumeratorMobile: form.enumeratorMobile,
 
         // -------------------------------------------
-        // ADMINISTRATIVE INFORMATION
+        // ADMINISTRATIVE
         // -------------------------------------------
 
         state: form.state,
@@ -584,12 +660,12 @@ export default function Census2027Page() {
         // GPS
         // -------------------------------------------
 
-        latitude: form.latitude ? Number(form.latitude) : null,
+        latitude: form.latitude !== "" ? Number(form.latitude) : null,
 
-        longitude: form.longitude ? Number(form.longitude) : null,
+        longitude: form.longitude !== "" ? Number(form.longitude) : null,
 
         // -------------------------------------------
-        // CENSUS INFORMATION
+        // CENSUS
         // -------------------------------------------
 
         buildingNo: form.buildingNo,
@@ -601,9 +677,6 @@ export default function Census2027Page() {
         headMobile: form.headMobile,
 
         selfEnumeration: form.selfEnumeration,
-
-        selfEnumerationID:
-          form.selfEnumeration === "হ্যাঁ" ? form.selfEnumerationID : "",
 
         // -------------------------------------------
         // HOUSE
@@ -672,7 +745,7 @@ export default function Census2027Page() {
         cookingFuel: form.cookingFuel,
 
         // -------------------------------------------
-        // TECHNOLOGY / ASSETS
+        // ASSETS
         // -------------------------------------------
 
         radio: form.radio,
@@ -696,54 +769,48 @@ export default function Census2027Page() {
         mainFoodGrain: form.mainFoodGrain,
 
         // -------------------------------------------
-        // SYSTEM INFORMATION
+        // TIMESTAMPS
         // -------------------------------------------
-
-        status: "submitted",
-
-        source: "census-2027-web",
 
         createdAt: serverTimestamp(),
 
         updatedAt: serverTimestamp(),
 
         submittedAt: serverTimestamp(),
-
-        deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "",
       };
 
-      // ---------------------------------------------
-      // SAVE TO FIRESTORE
-      // ---------------------------------------------
+      // =================================================
+      // FIRESTORE
+      // =================================================
 
       const docRef = await addDoc(collection(db, "census2027"), docData);
 
       console.log("Census record created:", docRef.id);
 
-      // ---------------------------------------------
+      // =================================================
       // SUCCESS
-      // ---------------------------------------------
+      // =================================================
 
       setMessage(`তথ্য সফলভাবে সংরক্ষণ হয়েছে। Household ID: ${householdId}`);
 
       setMessageType("success");
 
-      // ---------------------------------------------
-      // RESET FORM
-      // ---------------------------------------------
+      // =================================================
+      // RESET
+      // =================================================
 
       setForm({
         ...initialForm,
 
         householdId: generateHouseholdId(),
 
-        enumeratorId: form.enumeratorId,
+        enumeratorId: profile.enumeratorId || form.enumeratorId || "",
 
-        enumeratorName: currentUser.displayName || form.enumeratorName,
+        enumeratorName:
+          profile.name || currentUser.displayName || form.enumeratorName || "",
 
-        enumeratorMobile: form.enumeratorMobile,
-
-        selfEnumerationID: "",
+        enumeratorMobile:
+          profile.mobile || profile.phone || form.enumeratorMobile || "",
       });
 
       window.scrollTo({
@@ -757,7 +824,7 @@ export default function Census2027Page() {
 
       if (error.code === "permission-denied") {
         errorMessage =
-          "আপনার Census data submit করার অনুমতি নেই। আপনার account active কি না পরীক্ষা করুন।";
+          "আপনার Census data submit করার অনুমতি নেই। আপনার account-এর role/status পরীক্ষা করুন।";
       } else if (error.code === "unavailable") {
         errorMessage =
           "Firebase বর্তমানে unavailable। Internet connection পরীক্ষা করে আবার চেষ্টা করুন।";
@@ -773,9 +840,99 @@ export default function Census2027Page() {
     }
   };
 
-  // --------------------------------------------------
+  // =====================================================
+  // REUSABLE INPUT
+  // =====================================================
+
+  const Input = ({
+    label,
+    name,
+    type = "text",
+    required = false,
+    placeholder = "",
+    min,
+    max,
+    readOnly = false,
+  }) => (
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+        {label}
+
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
+
+      <input
+        type={type}
+        name={name}
+        value={form[name] ?? ""}
+        onChange={handleChange}
+        required={required}
+        placeholder={placeholder}
+        min={min}
+        max={max}
+        readOnly={readOnly}
+        className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+          readOnly
+            ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-600"
+            : "border-gray-300 bg-white"
+        }`}
+      />
+    </div>
+  );
+
+  // =====================================================
+  // SELECT
+  // =====================================================
+
+  const Select = ({ label, name, options, required = false }) => (
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+        {label}
+
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
+
+      <select
+        name={name}
+        value={form[name] ?? ""}
+        onChange={handleChange}
+        required={required}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+      >
+        <option value="">-- নির্বাচন করুন --</option>
+
+        {options.map((option, index) => (
+          <option key={`${name}-${index}`} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // =====================================================
+  // SECTION
+  // =====================================================
+
+  const Section = ({ number, title, children }) => (
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-green-100 bg-green-50 px-4 py-3 sm:px-5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-700 text-sm font-bold text-white">
+          {number}
+        </span>
+
+        <h2 className="text-base font-bold text-gray-800 sm:text-lg">
+          {title}
+        </h2>
+      </div>
+
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
+  );
+
+  // =====================================================
   // AUTH LOADING
-  // --------------------------------------------------
+  // =====================================================
 
   if (checkingAuth) {
     return (
@@ -784,21 +941,23 @@ export default function Census2027Page() {
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-green-700" />
 
           <p className="mt-4 text-sm font-semibold text-gray-600">
-            Checking authentication...
+            Checking account...
           </p>
         </div>
       </main>
     );
   }
 
-  // --------------------------------------------------
+  // =====================================================
   // FORM
-  // --------------------------------------------------
+  // =====================================================
 
   return (
     <main className="min-h-screen bg-gray-100 px-3 py-5 sm:px-5 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <header className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-green-900 via-green-700 to-green-600 text-white shadow-lg">
           <div className="px-4 py-6 text-center sm:px-8">
@@ -815,15 +974,27 @@ export default function Census2027Page() {
             </p>
 
             {user && (
-              <p className="mt-3 text-xs text-green-200">
-                Logged in as:{" "}
-                <span className="font-semibold text-white">{user.email}</span>
-              </p>
+              <div className="mt-3">
+                <p className="text-xs text-green-200">Logged in as</p>
+
+                <p className="mt-0.5 text-sm font-bold text-white">
+                  {userProfile?.name || user.displayName || user.email}
+                </p>
+
+                <p className="mt-0.5 text-xs text-green-200">
+                  {user.email} •{" "}
+                  {userProfile?.role === "admin"
+                    ? "Administrator"
+                    : "Enumerator"}
+                </p>
+              </div>
             )}
           </div>
         </header>
 
-        {/* INFORMATION */}
+        {/* =================================================
+            INSTRUCTIONS
+        ================================================= */}
 
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <p className="font-bold">তথ্য সংগ্রহের নির্দেশনা</p>
@@ -839,18 +1010,20 @@ export default function Census2027Page() {
           </ul>
         </div>
 
-        {/* FORM */}
+        {/* =================================================
+            FORM
+        ================================================= */}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* 1 */}
+          {/* =================================================
+              1. ENUMERATOR
+          ================================================= */}
 
           <Section number="১" title="জরিপ ও গণনাকারীর তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
                 label="Household ID"
                 name="householdId"
-                form={form}
-                onChange={handleChange}
                 required
                 readOnly
               />
@@ -858,8 +1031,6 @@ export default function Census2027Page() {
               <Input
                 label="Enumerator ID"
                 name="enumeratorId"
-                form={form}
-                onChange={handleChange}
                 required
                 placeholder="গণনাকারীর ID"
               />
@@ -867,8 +1038,6 @@ export default function Census2027Page() {
               <Input
                 label="গণনাকারীর নাম"
                 name="enumeratorName"
-                form={form}
-                onChange={handleChange}
                 required
                 placeholder="পূর্ণ নাম"
               />
@@ -876,8 +1045,6 @@ export default function Census2027Page() {
               <Input
                 label="গণনাকারীর মোবাইল"
                 name="enumeratorMobile"
-                form={form}
-                onChange={handleChange}
                 type="tel"
                 required
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
@@ -885,78 +1052,33 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 2 */}
+          {/* =================================================
+              2. ADDRESS
+          ================================================= */}
 
           <Section number="২" title="ঠিকানা ও প্রশাসনিক তথ্য">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Input
-                label="রাজ্য"
-                name="state"
-                form={form}
-                onChange={handleChange}
-                required
-                readOnly
-              />
+              <Input label="রাজ্য" name="state" required readOnly />
 
-              <Input
-                label="জেলা"
-                name="district"
-                form={form}
-                onChange={handleChange}
-                required
-              />
+              <Input label="জেলা" name="district" required />
 
-              <Input
-                label="মহকুমা / Subdivision"
-                name="subdivision"
-                form={form}
-                onChange={handleChange}
-              />
+              <Input label="মহকুমা / Subdivision" name="subdivision" />
 
-              <Input
-                label="ব্লক / Municipality"
-                name="block"
-                form={form}
-                onChange={handleChange}
-                required
-              />
+              <Input label="ব্লক / Municipality" name="block" required />
 
-              <Input
-                label="গ্রাম পঞ্চায়েত"
-                name="gramPanchayat"
-                form={form}
-                onChange={handleChange}
-              />
+              <Input label="গ্রাম পঞ্চায়েত" name="gramPanchayat" />
 
-              <Input
-                label="ওয়ার্ড নং"
-                name="ward"
-                form={form}
-                onChange={handleChange}
-              />
+              <Input label="ওয়ার্ড নং" name="ward" />
 
-              <Input
-                label="গ্রাম / Locality"
-                name="village"
-                form={form}
-                onChange={handleChange}
-                required
-              />
+              <Input label="গ্রাম / Locality" name="village" required />
 
-              <Input
-                label="পাড়া / Locality"
-                name="locality"
-                form={form}
-                onChange={handleChange}
-              />
+              <Input label="পাড়া / Locality" name="locality" />
 
               <Input
                 label="PIN Code"
                 name="pinCode"
-                form={form}
-                onChange={handleChange}
                 type="text"
-                max={6}
+                max="6"
                 placeholder="৬ সংখ্যার PIN"
               />
             </div>
@@ -974,38 +1096,24 @@ export default function Census2027Page() {
                 required
                 rows={3}
                 placeholder="বাড়ির পূর্ণ ঠিকানা লিখুন"
-                autoCapitalize="characters"
-                style={{ textTransform: "uppercase" }}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
               />
             </div>
           </Section>
 
-          {/* 3 */}
+          {/* =================================================
+              3. CENSUS
+          ================================================= */}
 
           <Section number="৩" title="Building ও Census তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input
-                label="Building No."
-                name="buildingNo"
-                form={form}
-                onChange={handleChange}
-                required
-              />
+              <Input label="Building No." name="buildingNo" required />
 
-              <Input
-                label="Census No."
-                name="censusNo"
-                form={form}
-                onChange={handleChange}
-                required
-              />
+              <Input label="Census No." name="censusNo" required />
 
               <Input
                 label="গৃহপ্রধানের নাম"
                 name="headName"
-                form={form}
-                onChange={handleChange}
                 required
                 placeholder="গৃহপ্রধানের পূর্ণ নাম"
               />
@@ -1013,8 +1121,6 @@ export default function Census2027Page() {
               <Input
                 label="গৃহপ্রধানের মোবাইল"
                 name="headMobile"
-                form={form}
-                onChange={handleChange}
                 type="tel"
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
               />
@@ -1024,38 +1130,21 @@ export default function Census2027Page() {
               <Select
                 label="Self Enumeration করেছেন কি না?"
                 name="selfEnumeration"
-                form={form}
-                onChange={handleChange}
                 required
                 options={["হ্যাঁ", "না"]}
               />
             </div>
-
-            {form.selfEnumeration === "হ্যাঁ" && (
-              <div className="mt-4 max-w-md">
-                <Input
-                  label="Self Enumeration ID"
-                  name="selfEnumerationID"
-                  form={form}
-                  onChange={handleChange}
-                  required
-                  placeholder="১২ অক্ষরের Capital Alpha Numeric Code"
-                  maxLength={12}
-                  pattern="[A-Z0-9]{12}"
-                />
-              </div>
-            )}
           </Section>
 
-          {/* 4 */}
+          {/* =================================================
+              4. HOUSE MATERIAL
+          ================================================= */}
 
           <Section number="৪" title="বাড়ির গঠন ও উপাদান">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="মেঝের প্রধান উপাদান"
                 name="floorMaterial"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "মাটি",
                   "কাঠ/বাঁশ",
@@ -1070,8 +1159,6 @@ export default function Census2027Page() {
               <Select
                 label="দেওয়ালের প্রধান উপাদান"
                 name="wallMaterial"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "ঘাস/খড়/বাঁশ",
                   "প্লাস্টিক/পলিথিন",
@@ -1089,8 +1176,6 @@ export default function Census2027Page() {
               <Select
                 label="ছাদের প্রধান উপাদান"
                 name="roofMaterial"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "ঘাস/খড়/বাঁশ",
                   "কাঠ",
@@ -1109,15 +1194,15 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 5 */}
+          {/* =================================================
+              5. HOUSE USE
+          ================================================= */}
 
           <Section number="৫" title="বাড়ির ব্যবহার ও বর্তমান অবস্থা">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="এই সেন্সাস গৃহের প্রকৃত ব্যবহার"
                 name="houseUse"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "বাসগৃহ",
                   "বাসগৃহ-সহ অন্যান্য",
@@ -1135,50 +1220,32 @@ export default function Census2027Page() {
               <Select
                 label="এই সেন্সাস গৃহের বর্তমান অবস্থা"
                 name="houseCondition"
-                form={form}
-                onChange={handleChange}
                 options={["ভালো", "বাসযোগ্য", "ক্ষতিগ্রস্ত"]}
               />
             </div>
           </Section>
 
-          {/* 6 */}
+          {/* =================================================
+              6. MEMBERS
+          ================================================= */}
 
           <Section number="৬" title="পরিবারের সদস্য সংখ্যা">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Input
                 label="পরিবারের মোট সদস্য"
                 name="householdMembers"
-                form={form}
-                onChange={handleChange}
                 type="number"
                 min="0"
                 required
               />
 
-              <Input
-                label="পুরুষ"
-                name="maleMembers"
-                form={form}
-                onChange={handleChange}
-                type="number"
-                min="0"
-              />
+              <Input label="পুরুষ" name="maleMembers" type="number" min="0" />
 
-              <Input
-                label="মহিলা"
-                name="femaleMembers"
-                form={form}
-                onChange={handleChange}
-                type="number"
-                min="0"
-              />
+              <Input label="মহিলা" name="femaleMembers" type="number" min="0" />
 
               <Input
                 label="অন্যান্য"
                 name="otherMembers"
-                form={form}
-                onChange={handleChange}
                 type="number"
                 min="0"
               />
@@ -1188,31 +1255,27 @@ export default function Census2027Page() {
               <Input
                 label="বিবাহিত দম্পতির সংখ্যা"
                 name="marriedCouples"
-                form={form}
-                onChange={handleChange}
                 type="number"
                 min="0"
               />
             </div>
           </Section>
 
-          {/* 7 */}
+          {/* =================================================
+              7. SOCIAL
+          ================================================= */}
 
           <Section number="৭" title="সামাজিক ও মালিকানা তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="পরিবারের প্রধানের জাতি"
                 name="caste"
-                form={form}
-                onChange={handleChange}
                 options={["তপশিলি জাতি", "তপশিলি উপজাতি", "অন্যান্য"]}
               />
 
               <Select
                 label="গৃহের মালিকানা"
                 name="houseOwnership"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "নিজের",
                   "ভাড়া, অন্য বাড়ি আছে",
@@ -1223,15 +1286,15 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 8 */}
+          {/* =================================================
+              8. WATER
+          ================================================= */}
 
           <Section number="৮" title="পানীয় জল">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="পানীয় জলের প্রধান উৎস"
                 name="drinkingWaterSource"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "পরিশুদ্ধ কলের জল",
                   "অ-পরিশুদ্ধ কলের জল",
@@ -1249,8 +1312,6 @@ export default function Census2027Page() {
               <Select
                 label="পানীয় জলের উৎসটি কোথায়?"
                 name="drinkingWaterLocation"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "বাড়ির চৌহদ্দির মধ্যে",
                   "বাড়ির চৌহদ্দির কাছে",
@@ -1260,14 +1321,14 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 9 */}
+          {/* =================================================
+              9. LIGHT
+          ================================================= */}
 
           <Section number="৯" title="আলোর ব্যবস্থা">
             <Select
               label="আলোর প্রধান উৎস"
               name="lightingSource"
-              form={form}
-              onChange={handleChange}
               options={[
                 "বিদ্যুৎ",
                 "কেরোসিন",
@@ -1279,15 +1340,15 @@ export default function Census2027Page() {
             />
           </Section>
 
-          {/* 10 */}
+          {/* =================================================
+              10. SANITATION
+          ================================================= */}
 
           <Section number="১০" title="শৌচালয় ও স্যানিটেশন">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="শৌচালয়ের উপলভ্যতা"
                 name="latrineAvailability"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "শুধু এই পরিবারের",
                   "যৌথভাবে",
@@ -1299,8 +1360,6 @@ export default function Census2027Page() {
               <Select
                 label="শৌচালয়ের ধরন"
                 name="latrineType"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "নলবাহিত পূর্ণশৌচালয়",
                   "সেপটিক ট্যাঙ্ক",
@@ -1317,16 +1376,12 @@ export default function Census2027Page() {
               <Select
                 label="বর্জ্য জলের নিষ্কাশন"
                 name="wasteWaterDrain"
-                form={form}
-                onChange={handleChange}
                 options={["ঢাকা নর্দমা", "খোলা নর্দমা", "কোন নর্দমা নেই"]}
               />
 
               <Select
                 label="বাড়ির মধ্যে স্নানের ব্যবস্থা"
                 name="bathingArrangement"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "স্নানের ঘর আছে",
                   "ছাদবিহীন ঘেরা জায়গা আছে",
@@ -1336,15 +1391,15 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 11 */}
+          {/* =================================================
+              11. COOKING
+          ================================================= */}
 
           <Section number="১১" title="রান্নার গ্যাস ও জ্বালানি">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="রান্নার গ্যাস (LPG/CNG) সংযোগের অবস্থা"
                 name="cookingGas"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "সংযোগ আছে",
                   "সংযোগ নেই",
@@ -1357,8 +1412,6 @@ export default function Census2027Page() {
               <Select
                 label="রান্নায় ব্যবহৃত প্রধান জ্বালানি"
                 name="cookingFuel"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "জ্বালানি কাঠ",
                   "গোবরের পরিত্যক্ত অংশ",
@@ -1375,15 +1428,15 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 12 */}
+          {/* =================================================
+              12. ASSETS
+          ================================================= */}
 
           <Section number="১২" title="যোগাযোগ, প্রযুক্তি ও অন্যান্য সুবিধা">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="রেডিও / ট্রানজিস্টর"
                 name="radio"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "সাধারণ রেডিও",
                   "মোবাইল/স্মার্টফোন",
@@ -1395,8 +1448,6 @@ export default function Census2027Page() {
               <Select
                 label="টেলিভিশন"
                 name="television"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "দূরদর্শন DTH",
                   "স্যাটেলাইট",
@@ -1410,8 +1461,6 @@ export default function Census2027Page() {
               <Select
                 label="ইন্টারনেট"
                 name="internet"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "মোবাইল ডেটা",
                   "ব্রডব্যান্ড",
@@ -1424,16 +1473,12 @@ export default function Census2027Page() {
               <Select
                 label="ল্যাপটপ / কম্পিউটার"
                 name="laptopComputer"
-                form={form}
-                onChange={handleChange}
                 options={["হ্যাঁ", "না"]}
               />
 
               <Select
                 label="টেলিফোন / মোবাইল ফোন"
                 name="mobilePhone"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "ল্যান্ডলাইন",
                   "সাধারণ মোবাইল",
@@ -1446,8 +1491,6 @@ export default function Census2027Page() {
               <Select
                 label="সাইকেল / স্কুটার / মোটরসাইকেল / মোপেড"
                 name="bicycleVehicle"
-                form={form}
-                onChange={handleChange}
                 options={[
                   "সাইকেল",
                   "স্কুটার/মোটরসাইকেল/মোপেড",
@@ -1459,22 +1502,20 @@ export default function Census2027Page() {
               <Select
                 label="চার চাকার গাড়ি / জিপ / মোটর ভ্যান"
                 name="carVan"
-                form={form}
-                onChange={handleChange}
                 options={["হ্যাঁ", "না"]}
               />
 
               <Select
                 label="প্রধান খাদ্যশস্য"
                 name="mainFoodGrain"
-                form={form}
-                onChange={handleChange}
                 options={["ধান", "গম", "জোয়ার", "বাজরা", "ভুট্টা", "অন্যান্য"]}
               />
             </div>
           </Section>
 
-          {/* 13 */}
+          {/* =================================================
+              13. GPS
+          ================================================= */}
 
           <Section number="১৩" title="বাড়ির GPS অবস্থান">
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -1519,7 +1560,9 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* 14 */}
+          {/* =================================================
+              14. FINAL CHECK
+          ================================================= */}
 
           <Section number="১৪" title="চূড়ান্ত যাচাই">
             <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
@@ -1548,11 +1591,13 @@ export default function Census2027Page() {
             </div>
           </Section>
 
-          {/* MESSAGE */}
+          {/* =================================================
+              MESSAGE
+          ================================================= */}
 
           {message && (
             <div
-              className={`sticky bottom-20 z-20 rounded-xl border px-4 py-3 text-center text-sm font-semibold shadow-lg ${
+              className={`rounded-xl border px-4 py-3 text-center text-sm font-semibold shadow ${
                 messageType === "success"
                   ? "border-green-300 bg-green-100 text-green-800"
                   : messageType === "error"
@@ -1564,7 +1609,9 @@ export default function Census2027Page() {
             </div>
           )}
 
-          {/* SUBMIT BAR */}
+          {/* =================================================
+              SUBMIT
+          ================================================= */}
 
           <div className="sticky bottom-2 z-30 rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur sm:p-4">
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -1590,7 +1637,9 @@ export default function Census2027Page() {
           </div>
         </form>
 
-        {/* FOOTER */}
+        {/* =================================================
+            FOOTER
+        ================================================= */}
 
         <footer className="py-6 text-center text-xs text-gray-500">
           <p className="font-semibold">

@@ -1,374 +1,738 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  updateProfile,
+  signOut,
 } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+
 import { auth, db } from "@/lib/firebase";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
   const router = useRouter();
 
-  const [name, setName] = useState("");
-  const [enumeratorId, setEnumeratorId] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // =====================================================
+  // FORM STATE
+  // =====================================================
+
+  const [form, setForm] = useState({
+    name: "",
+    enumeratorId: "",
+    mobile: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  // =====================================================
+  // UI STATE
+  // =====================================================
+
+  const [loading, setLoading] = useState(false);
+
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const [message, setMessage] = useState("");
+
+  const [messageType, setMessageType] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [error, setError] = useState("");
+  // =====================================================
+  // CHECK EXISTING LOGIN
+  // =====================================================
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/census-2027/data");
-      } else {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
         setCheckingAuth(false);
+        return;
       }
+
+      /*
+       * If already logged in, check whether
+       * a profile exists.
+       */
+
+      try {
+        const profileRef = doc(db, "enumerators", currentUser.uid);
+
+        const profileSnap = await getDoc(profileRef);
+
+        if (profileSnap.exists()) {
+          router.replace("/");
+
+          return;
+        }
+
+        /*
+         * Auth user exists but profile
+         * doesn't exist.
+         *
+         * We allow the user to remain
+         * on signup page so the profile
+         * can be created if appropriate.
+         */
+      } catch (error) {
+        console.error("Profile check error:", error);
+      }
+
+      setCheckingAuth(false);
     });
 
     return () => unsubscribe();
   }, [router]);
+
+  // =====================================================
+  // INPUT HANDLER
+  // =====================================================
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (message) {
+      setMessage("");
+      setMessageType("");
+    }
+  };
+
+  // =====================================================
+  // VALIDATION
+  // =====================================================
+
+  const validateForm = () => {
+    const name = form.name.trim();
+
+    const enumeratorId = form.enumeratorId.trim();
+
+    const mobile = form.mobile.trim();
+
+    const email = form.email.trim().toLowerCase();
+
+    const password = form.password;
+
+    const confirmPassword = form.confirmPassword;
+
+    // -----------------------------------------------
+    // NAME
+    // -----------------------------------------------
+
+    if (!name) {
+      return "আপনার পূর্ণ নাম লিখুন।";
+    }
+
+    if (name.length < 2) {
+      return "সঠিক নাম লিখুন।";
+    }
+
+    // -----------------------------------------------
+    // ENUMERATOR ID
+    // -----------------------------------------------
+
+    if (!enumeratorId) {
+      return "Enumerator ID লিখুন।";
+    }
+
+    // -----------------------------------------------
+    // MOBILE
+    // -----------------------------------------------
+
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      return "সঠিক ১০ সংখ্যার ভারতীয় মোবাইল নম্বর দিন।";
+    }
+
+    // -----------------------------------------------
+    // EMAIL
+    // -----------------------------------------------
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return "সঠিক Email Address দিন।";
+    }
+
+    // -----------------------------------------------
+    // PASSWORD
+    // -----------------------------------------------
+
+    if (password.length < 6) {
+      return "Password কমপক্ষে ৬ অক্ষরের হতে হবে।";
+    }
+
+    // -----------------------------------------------
+    // CONFIRM PASSWORD
+    // -----------------------------------------------
+
+    if (password !== confirmPassword) {
+      return "Password এবং Confirm Password একই নয়।";
+    }
+
+    return "";
+  };
+
+  // =====================================================
+  // SIGN UP
+  // =====================================================
 
   const handleSignup = async (e) => {
     e.preventDefault();
 
     if (loading) return;
 
-    setError("");
+    setMessage("");
+    setMessageType("");
 
-    // Validation
-    if (!name.trim()) {
-      setError("আপনার নাম দিন।");
+    // -----------------------------------------------
+    // VALIDATE
+    // -----------------------------------------------
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setMessage(validationError);
+
+      setMessageType("error");
+
       return;
     }
 
-    if (!enumeratorId.trim()) {
-      setError("Enumerator ID দিন।");
-      return;
-    }
-
-    if (!/^[6-9]\d{9}$/.test(mobile)) {
-      setError("সঠিক ১০ সংখ্যার মোবাইল নম্বর দিন।");
-      return;
-    }
-
-    if (!email.trim()) {
-      setError("Email address দিন।");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password কমপক্ষে ৬ অক্ষরের হতে হবে।");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Password এবং Confirm Password একই নয়।");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
+      const name = form.name.trim();
 
-      // Create Firebase account
-      const credential = await createUserWithEmailAndPassword(
+      const enumeratorId = form.enumeratorId.trim();
+
+      const mobile = form.mobile.trim();
+
+      const email = form.email.trim().toLowerCase();
+
+      // =================================================
+      // CREATE FIREBASE AUTH USER
+      // =================================================
+
+      const userCredential = await createUserWithEmailAndPassword(
         auth,
-        email.trim(),
-        password,
+        email,
+        form.password,
       );
 
-      const user = credential.user;
+      const user = userCredential.user;
 
-      // Set display name
-      await updateProfile(user, {
-        displayName: name.trim(),
-      });
+      console.log("Firebase Auth user created:", user.uid);
 
-      // Store enumerator profile in Firestore
-      await setDoc(doc(db, "enumerators", user.uid), {
+      // =================================================
+      // IMPORTANT
+      // =================================================
+      //
+      // Firestore document ID = Firebase Auth UID
+      //
+      // This fixes:
+      //
+      // Enumerator profile not found.
+      //
+      // =================================================
+
+      const profileRef = doc(db, "enumerators", user.uid);
+
+      // =================================================
+      // CREATE ENUMERATOR PROFILE
+      // =================================================
+
+      await setDoc(profileRef, {
+        // -------------------------------------------
+        // AUTH INFORMATION
+        // -------------------------------------------
+
         uid: user.uid,
-        name: name.trim(),
-        enumeratorId: enumeratorId.trim(),
-        mobile: mobile,
-        email: email.trim().toLowerCase(),
+
+        email: user.email || email,
+
+        // -------------------------------------------
+        // ENUMERATOR INFORMATION
+        // -------------------------------------------
+
+        name,
+
+        enumeratorId,
+
+        mobile,
+
+        // -------------------------------------------
+        // ACCOUNT STATUS
+        // -------------------------------------------
+
+        /*
+         * New accounts must be approved
+         * by an administrator.
+         */
 
         role: "enumerator",
 
-        status: "active",
+        status: "pending",
+
+        // -------------------------------------------
+        // PROJECT
+        // -------------------------------------------
+
+        project: "Census 2027",
+
+        // -------------------------------------------
+        // TIMESTAMPS
+        // -------------------------------------------
 
         createdAt: serverTimestamp(),
 
         updatedAt: serverTimestamp(),
       });
 
-      router.replace("/census-2027");
+      console.log("Enumerator profile created:", user.uid);
+
+      // =================================================
+      // SIGN OUT
+      // =================================================
+      //
+      // Because the new account is pending,
+      // don't leave the user logged in.
+      //
+      // =================================================
+
+      await signOut(auth);
+
+      // =================================================
+      // SUCCESS
+      // =================================================
+
+      setMessage(
+        "Registration সফল হয়েছে। আপনার account এখন Administrator-এর approval-এর অপেক্ষায় আছে। Approval হওয়ার পর আপনি Login করে Census 2027 data submit করতে পারবেন।",
+      );
+
+      setMessageType("success");
+
+      // Clear password fields
+      setForm({
+        name: "",
+        enumeratorId: "",
+        mobile: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
     } catch (error) {
       console.error("Signup error:", error);
 
-      let message = "Account তৈরি করা যায়নি। আবার চেষ্টা করুন।";
+      let errorMessage = "Registration করা যায়নি।";
+
+      // =================================================
+      // FIREBASE AUTH ERRORS
+      // =================================================
 
       switch (error.code) {
         case "auth/email-already-in-use":
-          message = "এই Email address দিয়ে ইতিমধ্যে একটি account আছে।";
+          errorMessage =
+            "এই Email Address দিয়ে ইতিমধ্যে একটি account আছে। Login করুন।";
           break;
 
         case "auth/invalid-email":
-          message = "সঠিক Email address দিন।";
+          errorMessage = "Email Address সঠিক নয়।";
           break;
 
         case "auth/weak-password":
-          message = "Password আরও শক্তিশালী করুন।";
+          errorMessage = "Password আরও শক্তিশালী করুন।";
           break;
 
         case "auth/network-request-failed":
-          message = "Internet connection পরীক্ষা করুন।";
+          errorMessage =
+            "Network connection সমস্যা হয়েছে। Internet connection পরীক্ষা করুন।";
           break;
 
         case "auth/operation-not-allowed":
-          message =
-            "Firebase Console-এ Email/Password Authentication চালু করুন।";
+          errorMessage =
+            "Firebase Console-এ Email/Password Authentication চালু করা নেই।";
+          break;
+
+        case "permission-denied":
+        case "firestore/permission-denied":
+          errorMessage =
+            "Enumerator profile তৈরি করার Firestore permission নেই। আপনার Firestore rules পরীক্ষা করুন।";
           break;
 
         default:
-          message = error.message || "Account তৈরি করা যায়নি।";
+          if (error.message) {
+            errorMessage = error.message;
+          }
       }
 
-      setError(message);
+      setMessage(errorMessage);
+
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
   };
 
+  // =====================================================
+  // AUTH CHECK LOADING
+  // =====================================================
+
   if (checkingAuth) {
     return (
-      <main className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-gray-100">
+      <main className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-green-700" />
 
           <p className="mt-4 text-sm font-semibold text-gray-600">
-            Checking authentication...
+            Checking account...
           </p>
         </div>
       </main>
     );
   }
 
+  // =====================================================
+  // PAGE
+  // =====================================================
+
   return (
-    <main className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-green-50 via-white to-green-100 px-4 py-8">
-      <div className="w-full max-w-md">
-        {/* BRAND */}
+    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-lg">
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <div className="mb-5 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-800 text-3xl font-black text-white shadow-lg">
-            C
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-700 text-3xl text-white shadow-lg">
+            📝
           </div>
 
-          <h1 className="mt-4 text-2xl font-bold text-gray-800">Census 2027</h1>
+          <h1 className="mt-4 text-2xl font-black text-gray-800 sm:text-3xl">
+            Census 2027
+          </h1>
 
-          <p className="mt-1 text-sm text-gray-500">
-            Household Data Collection System
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Enumerator Registration</p>
         </div>
 
-        {/* CARD */}
+        {/* =================================================
+            CARD
+        ================================================= */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xl sm:p-7">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-800">
-              Create Enumerator Account
-            </h2>
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+          {/* CARD HEADER */}
 
-            <p className="mt-1 text-sm text-gray-500">
-              নতুন গণনাকারী account তৈরি করুন।
+          <div className="bg-gradient-to-r from-green-800 to-green-600 px-5 py-5 text-white sm:px-6">
+            <h2 className="text-xl font-bold">Sign Up</h2>
+
+            <p className="mt-1 text-sm text-green-100">
+              Census 2027 data collection-এর জন্য account তৈরি করুন।
             </p>
           </div>
 
-          {/* ERROR */}
+          {/* FORM */}
 
-          {error && (
-            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSignup} className="space-y-4">
-            {/* NAME */}
+          <form onSubmit={handleSignup} className="space-y-5 p-5 sm:p-6">
+            {/* =================================================
+                NAME
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                গণনাকারীর নাম
+              <label
+                htmlFor="name"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
+                পূর্ণ নাম
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
               <input
+                id="name"
+                name="name"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="পূর্ণ নাম"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="আপনার পূর্ণ নাম"
                 autoComplete="name"
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
               />
             </div>
 
-            {/* ENUMERATOR ID */}
+            {/* =================================================
+                ENUMERATOR ID
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="enumeratorId"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
                 Enumerator ID
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
               <input
+                id="enumeratorId"
+                name="enumeratorId"
                 type="text"
-                value={enumeratorId}
-                onChange={(e) => setEnumeratorId(e.target.value.toUpperCase())}
-                placeholder="যেমন: ENM001"
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm uppercase outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                value={form.enumeratorId}
+                onChange={handleChange}
+                placeholder="যেমন: EN001"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
               />
+
+              <p className="mt-1.5 text-xs text-gray-500">
+                আপনাকে দেওয়া Enumerator ID ব্যবহার করুন।
+              </p>
             </div>
 
-            {/* MOBILE */}
+            {/* =================================================
+                MOBILE
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="mobile"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
                 মোবাইল নম্বর
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
               <input
+                id="mobile"
+                name="mobile"
                 type="tel"
-                value={mobile}
-                onChange={(e) =>
-                  setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))
-                }
-                placeholder="১০ সংখ্যার মোবাইল নম্বর"
                 inputMode="numeric"
                 maxLength={10}
+                value={form.mobile}
+                onChange={handleChange}
+                placeholder="১০ সংখ্যার মোবাইল নম্বর"
                 autoComplete="tel"
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
               />
             </div>
 
-            {/* EMAIL */}
+            {/* =================================================
+                EMAIL
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
                 Email Address
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
               <input
+                id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="enumerator@example.com"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="example@gmail.com"
                 autoComplete="email"
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
               />
             </div>
 
-            {/* PASSWORD */}
+            {/* =================================================
+                PASSWORD
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
                 Password
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
               <div className="relative">
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={form.password}
+                  onChange={handleChange}
                   placeholder="কমপক্ষে ৬ অক্ষর"
                   autoComplete="new-password"
-                  disabled={loading}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-16 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                  required
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  disabled={loading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-green-700"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
 
-            {/* CONFIRM PASSWORD */}
+            {/* =================================================
+                CONFIRM PASSWORD
+            ================================================= */}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="confirmPassword"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
                 Confirm Password
+                <span className="ml-1 text-red-500">*</span>
               </label>
 
-              <input
-                type={showPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Password আবার লিখুন"
-                autoComplete="new-password"
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Password আবার লিখুন"
+                  autoComplete="new-password"
+                  required
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-green-700"
+                >
+                  {showConfirmPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
-            {/* INFO */}
+            {/* =================================================
+                APPROVAL NOTICE
+            ================================================= */}
 
-            <div className="rounded-lg bg-green-50 p-3 text-xs leading-5 text-green-800">
-              <p className="font-bold">Account তৈরির পরে:</p>
+            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex gap-3">
+                <div className="text-xl">ℹ️</div>
 
-              <p className="mt-1">
-                আপনার Enumerator profile এবং authentication information
-                নিরাপদভাবে সংরক্ষণ করা হবে।
-              </p>
+                <div>
+                  <p className="text-sm font-bold text-yellow-900">
+                    Administrator Approval Required
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-yellow-800">
+                    Registration করার পর আপনার account
+                    <strong> Pending </strong>
+                    থাকবে। Administrator approval দেওয়ার পরেই Census 2027 data
+                    collection করা যাবে।
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* SUBMIT */}
+            {/* =================================================
+                MESSAGE
+            ================================================= */}
+
+            {message && (
+              <div
+                className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+                  messageType === "success"
+                    ? "border-green-300 bg-green-50 text-green-800"
+                    : "border-red-300 bg-red-50 text-red-800"
+                }`}
+              >
+                <div className="flex gap-2">
+                  <span>{messageType === "success" ? "✓" : "⚠"}</span>
+
+                  <p>{message}</p>
+                </div>
+
+                {messageType === "success" && (
+                  <div className="mt-3">
+                    <Link
+                      href="/login"
+                      className="font-bold text-green-700 underline underline-offset-2 hover:text-green-900"
+                    >
+                      Login Page-এ যান →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* =================================================
+                SUBMIT
+            ================================================= */}
 
             {/* <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-green-700 px-5 py-3 font-bold text-white shadow-md transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-green-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-green-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Account তৈরি হচ্ছে..." : "Create Account"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Registration হচ্ছে...
+                </span>
+              ) : (
+                "✓ Create Enumerator Account"
+              )}
             </button> */}
           </form>
 
-          {/* LOGIN LINK */}
+          {/* =================================================
+              FOOTER
+          ================================================= */}
 
-          <div className="mt-6 border-t border-gray-100 pt-5 text-center">
-            <p className="text-sm text-gray-500">ইতিমধ্যে account আছে?</p>
+          <div className="border-t border-gray-100 bg-gray-50 px-5 py-4 text-center sm:px-6">
+            <p className="text-sm text-gray-600">ইতিমধ্যে account আছে?</p>
 
             <Link
               href="/login"
-              className="mt-1 inline-block text-sm font-bold text-green-700 hover:text-green-800"
+              className="mt-1 inline-block font-bold text-green-700 hover:text-green-900"
             >
               Login করুন →
             </Link>
           </div>
-
-          <div className="mt-3 text-center">
-            <Link
-              href="/"
-              className="text-xs text-gray-500 hover:text-green-700"
-            >
-              ← Back to Home
-            </Link>
-          </div>
         </div>
+
+        {/* =================================================
+            HOME
+        ================================================= */}
+
+        <div className="mt-5 text-center">
+          <Link
+            href="/"
+            className="text-sm font-semibold text-gray-500 hover:text-green-700"
+          >
+            ← Home Page
+          </Link>
+        </div>
+
+        {/* =================================================
+            FOOTER
+        ================================================= */}
+
+        <p className="mt-6 text-center text-xs text-gray-400">
+          Census 2027 — Household Data Collection
+        </p>
       </div>
     </main>
   );
