@@ -216,7 +216,7 @@ export default function HomePage() {
 
             {/* SIGN UP */}
 
-            <div className="mt-6 border-t border-gray-100 pt-5 text-center">
+            {/* <div className="mt-6 border-t border-gray-100 pt-5 text-center">
               <p className="text-sm text-gray-500">নতুন গণনাকারী?</p>
 
               <Link
@@ -225,7 +225,7 @@ export default function HomePage() {
               >
                 Create an Enumerator Account →
               </Link>
-            </div>
+            </div> */}
           </div>
 
           {/* FOOTER */}
