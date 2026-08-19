@@ -1359,6 +1359,7 @@ function DetailsModal({
         ["Roof Material", record.roofMaterial],
         ["House Use", record.houseUse],
         ["House Condition", record.houseCondition],
+        ["Number of Rooms", record.roomCount],
       ],
     },
 
