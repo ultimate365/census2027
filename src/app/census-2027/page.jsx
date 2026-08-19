@@ -127,14 +127,14 @@ export default function Census2027Page() {
     censusNo: "",
     headName: "",
     headMobile: "",
-    selfEnumeration: "",
+    selfEnumeration: "না",
     selfEnumerationID: "",
 
     // House
     floorMaterial: "",
     wallMaterial: "",
     roofMaterial: "",
-    houseUse: "",
+    houseUse: "বাসগৃহ",
     houseCondition: "",
 
     // Household
@@ -164,16 +164,16 @@ export default function Census2027Page() {
     cookingFuel: "",
 
     // Technology / Assets
-    radio: "",
-    television: "",
+    radio: "মোবাইল/স্মার্টফোন",
+    television: "কেবল সংযোগ",
     internet: "",
-    laptopComputer: "",
+    laptopComputer: "না",
     mobilePhone: "",
     bicycleVehicle: "",
-    carVan: "",
+    carVan: "না",
 
     // Food
-    mainFoodGrain: "",
+    mainFoodGrain: "ধান",
   };
 
   const [form, setForm] = useState(initialForm);
@@ -1226,7 +1226,6 @@ export default function Census2027Page() {
                 name="censusNo"
                 form={form}
                 onChange={handleChange}
-                required
               />
 
               <Input
