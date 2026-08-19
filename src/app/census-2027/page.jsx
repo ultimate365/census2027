@@ -12,6 +12,37 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
+const getEnumeratorProfileStorageKey = (uid) =>
+  `census2027:enumerator-profile:${uid}`;
+
+const readCachedEnumeratorProfile = (uid) => {
+  if (typeof window === "undefined" || !uid) return null;
+
+  try {
+    const cachedProfile = window.localStorage.getItem(
+      getEnumeratorProfileStorageKey(uid),
+    );
+
+    return cachedProfile ? JSON.parse(cachedProfile) : null;
+  } catch (error) {
+    console.error("Cached enumerator profile read error:", error);
+    return null;
+  }
+};
+
+const cacheEnumeratorProfile = (uid, profile) => {
+  if (typeof window === "undefined" || !uid || !profile) return;
+
+  try {
+    window.localStorage.setItem(
+      getEnumeratorProfileStorageKey(uid),
+      JSON.stringify(profile),
+    );
+  } catch (error) {
+    console.error("Enumerator profile cache error:", error);
+  }
+};
+
 const Input = ({
   label,
   name,
@@ -131,44 +162,45 @@ export default function Census2027Page() {
     selfEnumerationID: "",
 
     // House
-    floorMaterial: "",
-    wallMaterial: "",
-    roofMaterial: "",
+    floorMaterial: "সিমেন্ট",
+    wallMaterial: "পোড়া ইট",
+    roofMaterial: "কংক্রিট",
     houseUse: "বাসগৃহ",
-    houseCondition: "",
+    houseCondition: "ভালো",
 
     // Household
     householdMembers: "",
+    roomCount: "",
     maleMembers: "",
     femaleMembers: "",
     otherMembers: "",
-    caste: "",
-    houseOwnership: "",
+    caste: "অন্যান্য",
+    houseOwnership: "নিজের",
     marriedCouples: "",
 
     // Water
-    drinkingWaterSource: "",
-    drinkingWaterLocation: "",
+    drinkingWaterSource: "পরিশুদ্ধ কলের জল",
+    drinkingWaterLocation: "বাড়ির চৌহদ্দির মধ্যে",
 
     // Lighting
-    lightingSource: "",
+    lightingSource: "বিদ্যুৎ",
 
     // Sanitation
-    latrineAvailability: "",
-    latrineType: "",
-    wasteWaterDrain: "",
-    bathingArrangement: "",
+    latrineAvailability: "শুধু এই পরিবারের",
+    latrineType: "দুটি কুয়ো/পিটযুক্ত",
+    wasteWaterDrain: "কোন নর্দমা নেই",
+    bathingArrangement: "স্নানের ঘর আছে",
 
     // Cooking
-    cookingGas: "",
-    cookingFuel: "",
+    cookingGas: "সংযোগ আছে",
+    cookingFuel: "রান্নার গ্যাস (LPG/CNG)",
 
     // Technology / Assets
     radio: "মোবাইল/স্মার্টফোন",
     television: "কেবল সংযোগ",
-    internet: "",
+    internet: "মোবাইল ডেটা",
     laptopComputer: "না",
-    mobilePhone: "",
+    mobilePhone: "স্মার্টফোন",
     bicycleVehicle: "",
     carVan: "না",
 
@@ -261,6 +293,32 @@ export default function Census2027Page() {
       try {
         setCheckingAuth(true);
 
+        const cachedProfile = readCachedEnumeratorProfile(currentUser.uid);
+
+        if (cachedProfile) {
+          setUser(currentUser);
+          setUserProfile(cachedProfile);
+
+          setForm((prev) => ({
+            ...prev,
+            householdId: prev.householdId || generateHouseholdId(),
+            enumeratorId: cachedProfile.enumeratorId || prev.enumeratorId || "",
+            enumeratorName:
+              cachedProfile.name ||
+              currentUser.displayName ||
+              prev.enumeratorName ||
+              "",
+            enumeratorMobile:
+              cachedProfile.mobile ||
+              cachedProfile.phone ||
+              prev.enumeratorMobile ||
+              "",
+          }));
+
+          setCheckingAuth(false);
+          return;
+        }
+
         // -------------------------------------------
         // GET FIRESTORE USER PROFILE
         // -------------------------------------------
@@ -288,6 +346,8 @@ export default function Census2027Page() {
         }
 
         const profile = profileSnap.data();
+
+        cacheEnumeratorProfile(currentUser.uid, profile);
 
         // -------------------------------------------
         // CHECK ACTIVE STATUS
@@ -520,43 +580,12 @@ export default function Census2027Page() {
       return;
     }
 
-    // =================================================
-    // PROFILE CHECK AGAIN
-    // =================================================
+    const profile = userProfile || readCachedEnumeratorProfile(currentUser.uid);
 
-    try {
-      const profileRef = doc(db, "enumerators", currentUser.uid);
-
-      const profileSnap = await getDoc(profileRef);
-
-      if (!profileSnap.exists()) {
-        setMessage("আপনার Enumerator profile পাওয়া যায়নি।");
-
-        setMessageType("error");
-
-        return;
-      }
-
-      const profile = profileSnap.data();
-
-      const isActive = profile.status === "active";
-
-      const validRole =
-        profile.role === "enumerator" || profile.role === "admin";
-
-      if (!isActive || !validRole) {
-        setMessage(
-          "আপনার account এখনো active নয়। Administrator-এর সঙ্গে যোগাযোগ করুন।",
-        );
-
-        setMessageType("error");
-
-        return;
-      }
-    } catch (error) {
-      console.error("Profile validation error:", error);
-
-      setMessage("আপনার account যাচাই করা যায়নি।");
+    if (!profile) {
+      setMessage(
+        "Enumerator data পাওয়া যায়নি। এই page-টি Internet connection সহ একবার খুলুন।",
+      );
 
       setMessageType("error");
 
@@ -707,28 +736,6 @@ export default function Census2027Page() {
 
     try {
       // -----------------------------------------------
-      // FRESH PROFILE
-      // -----------------------------------------------
-
-      const profileRef = doc(db, "enumerators", currentUser.uid);
-
-      const profileSnap = await getDoc(profileRef);
-
-      if (!profileSnap.exists()) {
-        throw new Error("Enumerator profile পাওয়া যায়নি।");
-      }
-
-      const profile = profileSnap.data();
-
-      if (profile.status !== "active") {
-        throw new Error("আপনার account active নয়।");
-      }
-
-      if (profile.role !== "enumerator" && profile.role !== "admin") {
-        throw new Error("আপনার account-এর Census data submit করার অনুমতি নেই।");
-      }
-
-      // -----------------------------------------------
       // HOUSEHOLD ID
       // -----------------------------------------------
 
@@ -828,6 +835,8 @@ export default function Census2027Page() {
         houseUse: form.houseUse,
 
         houseCondition: form.houseCondition,
+
+        roomCount: form.roomCount,
 
         // -------------------------------------------
         // HOUSEHOLD
@@ -1043,7 +1052,7 @@ export default function Census2027Page() {
             INSTRUCTIONS
         ================================================= */}
 
-        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        {/* <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <p className="font-bold">তথ্য সংগ্রহের নির্দেশনা</p>
 
           <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -1055,7 +1064,7 @@ export default function Census2027Page() {
 
             <li>(*) চিহ্নিত ঘরগুলি অবশ্যই পূরণ করতে হবে।</li>
           </ul>
-        </div>
+        </div> */}
 
         {/* =================================================
             FORM
@@ -1066,7 +1075,7 @@ export default function Census2027Page() {
               1. ENUMERATOR
           ================================================= */}
 
-          <Section number="১" title="জরিপ ও গণনাকারীর তথ্য">
+          {/* <Section number="১" title="জরিপ ও গণনাকারীর তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
                 label="Household ID"
@@ -1105,13 +1114,13 @@ export default function Census2027Page() {
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
               />
             </div>
-          </Section>
+          </Section> */}
 
           {/* =================================================
               2. ADDRESS
           ================================================= */}
 
-          <Section number="২" title="ঠিকানা ও প্রশাসনিক তথ্য">
+          {/* <Section number="২" title="ঠিকানা ও প্রশাসনিক তথ্য">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Input
                 label="রাজ্য"
@@ -1205,7 +1214,7 @@ export default function Census2027Page() {
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
               />
             </div>
-          </Section>
+          </Section> */}
 
           {/* =================================================
               3. CENSUS
@@ -1369,6 +1378,14 @@ export default function Census2027Page() {
                 form={form}
                 onChange={handleChange}
                 options={["ভালো", "বাসযোগ্য", "ক্ষতিগ্রস্ত"]}
+              />
+              <Input
+                label="বসবাসযোগ্য ঘরের সংখ্যা"
+                name="roomCount"
+                form={form}
+                onChange={handleChange}
+                type="number"
+                min="0"
               />
             </div>
           </Section>

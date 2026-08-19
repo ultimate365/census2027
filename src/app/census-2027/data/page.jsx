@@ -20,6 +20,173 @@ import { auth, db } from "@/lib/firebase";
 
 import { useRouter } from "next/navigation";
 
+const editSelectOptions = {
+  selfEnumeration: ["হ্যাঁ", "না"],
+  floorMaterial: [
+    "মাটি",
+    "কাঠ/বাঁশ",
+    "পোড়া ইট",
+    "পাথর",
+    "সিমেন্ট",
+    "মোজাইক/মেঝের টাইল",
+    "অন্যান্য",
+  ],
+  wallMaterial: [
+    "ঘাস/খড়/বাঁশ",
+    "প্লাস্টিক/পলিথিন",
+    "মাটি/কাঁচা ইট",
+    "কাঠ",
+    "গাঁথুনি না করা পাথর",
+    "পাথর",
+    "GI শীট/মেটাল/অ্যাসবেস্টস শিট",
+    "পোড়া ইট",
+    "কংক্রিট",
+    "অন্যান্য",
+  ],
+  roofMaterial: [
+    "ঘাস/খড়/বাঁশ",
+    "কাঠ",
+    "মাটি",
+    "প্লাস্টিক/পলিথিন",
+    "হাতে তৈরি টালি",
+    "মেশিনে তৈরি টালি",
+    "পোড়া ইট",
+    "পাথর",
+    "স্লেট পাথর",
+    "GI শীট/মেটাল/অ্যাসবেস্টস শিট",
+    "কংক্রিট",
+    "অন্যান্য",
+  ],
+  houseUse: [
+    "বাসগৃহ",
+    "বাসগৃহ-সহ অন্যান্য",
+    "দোকান/অফিস",
+    "স্কুল/কলেজ",
+    "হোটেল/নিবাস/অতিথিশালা",
+    "হাসপাতাল/স্বাস্থ্যকেন্দ্র",
+    "কারখানা/ওয়ার্কশপ",
+    "ধর্মীয় স্থান",
+    "বাসগৃহ ছাড়া অন্য ব্যবহার",
+    "খালি",
+  ],
+  houseCondition: ["ভালো", "বাসযোগ্য", "ক্ষতিগ্রস্ত"],
+  caste: ["তপশিলি জাতি", "তপশিলি উপজাতি", "অন্যান্য"],
+  houseOwnership: [
+    "নিজের",
+    "ভাড়া, অন্য বাড়ি আছে",
+    "ভাড়া, বাড়ি নেই",
+    "অন্যান্য",
+  ],
+  drinkingWaterSource: [
+    "পরিশুদ্ধ কলের জল",
+    "অ-পরিশুদ্ধ কলের জল",
+    "কুয়ো",
+    "হ্যান্ড পাম্প",
+    "টিউবওয়েল/বোরহোল",
+    "ঝরনার জল",
+    "নদী/খাল",
+    "জলাধার/পুকুর/বিল",
+    "বোতলে কেনা জল",
+    "অন্যান্য",
+  ],
+  drinkingWaterLocation: [
+    "বাড়ির চৌহদ্দির মধ্যে",
+    "বাড়ির চৌহদ্দির কাছে",
+    "দূরে",
+  ],
+  lightingSource: [
+    "বিদ্যুৎ",
+    "কেরোসিন",
+    "সৌরবিদ্যুৎ",
+    "অন্যান্য তেল",
+    "অন্য উৎস",
+    "আলো নেই",
+  ],
+  latrineAvailability: [
+    "শুধু এই পরিবারের",
+    "যৌথভাবে",
+    "সর্বসাধারণের",
+    "খোলা জায়গায়",
+  ],
+  latrineType: [
+    "নলবাহিত পূর্ণশৌচালয়",
+    "সেপটিক ট্যাঙ্ক",
+    "অন্যান্য",
+    "দুটি কুয়ো/পিটযুক্ত",
+    "একটি কুয়ো/পিটযুক্ত",
+    "কাঁচা পায়খানা",
+    "মানুষ দ্বারা বাহিত",
+    "পশু দ্বারা বাহিত",
+    "খোলা নর্দমা দ্বারা",
+  ],
+  wasteWaterDrain: ["ঢাকা নর্দমা", "খোলা নর্দমা", "কোন নর্দমা নেই"],
+  bathingArrangement: [
+    "স্নানের ঘর আছে",
+    "ছাদবিহীন ঘেরা জায়গা আছে",
+    "না, ব্যবস্থা নেই",
+  ],
+  cookingGas: [
+    "সংযোগ আছে",
+    "সংযোগ নেই",
+    "বাড়ির ভিতরে রান্নার চুলা",
+    "বাড়ির বাইরে/খোলা জায়গায় রান্নার চুলা",
+    "রান্না হয় না",
+  ],
+  cookingFuel: [
+    "জ্বালানি কাঠ",
+    "গোবরের পরিত্যক্ত অংশ",
+    "খড়/কয়লা",
+    "কয়লা/লিগনাইট/কাঠ কয়লা",
+    "কেরোসিন",
+    "রান্নার গ্যাস (LPG/CNG)",
+    "বিদ্যুৎ",
+    "বায়োগ্যাস",
+    "সৌর শক্তি",
+    "অন্যান্য",
+  ],
+  radio: ["সাধারণ রেডিও", "মোবাইল/স্মার্টফোন", "অন্যান্য", "না"],
+  television: [
+    "দূরদর্শন DTH",
+    "স্যাটেলাইট",
+    "অন্যান্য DTH",
+    "কেবল সংযোগ",
+    "অন্যান্য",
+    "না",
+  ],
+  internet: ["মোবাইল ডেটা", "ব্রডব্যান্ড", "Wi-Fi", "অন্যান্য", "না"],
+  laptopComputer: ["হ্যাঁ", "না"],
+  mobilePhone: [
+    "ল্যান্ডলাইন",
+    "সাধারণ মোবাইল",
+    "স্মার্টফোন",
+    "ল্যান্ডলাইন ও মোবাইল উভয়",
+    "না",
+  ],
+  bicycleVehicle: [
+    "সাইকেল",
+    "স্কুটার/মোটরসাইকেল/মোপেড",
+    "দুটিই আছে",
+    "কোনোটিই নেই",
+  ],
+  carVan: ["হ্যাঁ", "না"],
+  mainFoodGrain: ["ধান", "গম", "জোয়ার", "বাজরা", "ভুট্টা", "অন্যান্য"],
+};
+const createDownloadLink = (myData, fileName) => {
+  const json = JSON.stringify(myData, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const href = URL.createObjectURL(blob);
+
+  // create "a" HTLM element with href to file
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = fileName + ".json";
+  document.body.appendChild(link);
+  link.click();
+
+  // clean up "a" element & remove ObjectURL
+  document.body.removeChild(link);
+  URL.revokeObjectURL(href);
+};
 /* =========================================================
    MAIN PAGE
 ========================================================= */
@@ -551,7 +718,15 @@ export default function CensusDataPage() {
               >
                 + New Data
               </button>
-
+              <button
+                type="button"
+                className="rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-orange-600"
+                onClick={() => {
+                  createDownloadLink(filteredRecords, "entry-data");
+                }}
+              >
+                Download Data
+              </button>
               <button
                 type="button"
                 onClick={loadRecords}
@@ -1358,6 +1533,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
               <EditInput
                 label="Enumerator Mobile"
                 name="enumeratorMobile"
+                type="tel"
                 value={record.enumeratorMobile}
                 onChange={onChange}
               />
@@ -1462,15 +1638,17 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
               <EditInput
                 label="Head Mobile"
                 name="headMobile"
+                type="tel"
                 value={record.headMobile}
                 onChange={onChange}
               />
 
-              <EditInput
+              <EditSelect
                 label="Self Enumeration"
                 name="selfEnumeration"
                 value={record.selfEnumeration}
                 onChange={onChange}
+                options={editSelectOptions.selfEnumeration}
               />
 
               {record.selfEnumeration === "হ্যাঁ" && (
@@ -1487,7 +1665,17 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 label="Total Members"
                 name="householdMembers"
                 type="number"
+                min="0"
                 value={record.householdMembers}
+                onChange={onChange}
+              />
+
+              <EditInput
+                label="বসবাসযোগ্য ঘরের সংখ্যা"
+                name="roomCount"
+                type="number"
+                min="0"
+                value={record.roomCount}
                 onChange={onChange}
               />
 
@@ -1495,6 +1683,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 label="Male Members"
                 name="maleMembers"
                 type="number"
+                min="0"
                 value={record.maleMembers}
                 onChange={onChange}
               />
@@ -1503,6 +1692,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 label="Female Members"
                 name="femaleMembers"
                 type="number"
+                min="0"
                 value={record.femaleMembers}
                 onChange={onChange}
               />
@@ -1511,6 +1701,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 label="Other Members"
                 name="otherMembers"
                 type="number"
+                min="0"
                 value={record.otherMembers}
                 onChange={onChange}
               />
@@ -1519,22 +1710,25 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 label="Married Couples"
                 name="marriedCouples"
                 type="number"
+                min="0"
                 value={record.marriedCouples}
                 onChange={onChange}
               />
 
-              <EditInput
+              <EditSelect
                 label="Caste"
                 name="caste"
                 value={record.caste}
                 onChange={onChange}
+                options={editSelectOptions.caste}
               />
 
-              <EditInput
+              <EditSelect
                 label="House Ownership"
                 name="houseOwnership"
                 value={record.houseOwnership}
                 onChange={onChange}
+                options={editSelectOptions.houseOwnership}
               />
             </div>
           </EditSection>
@@ -1543,39 +1737,44 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
 
           <EditSection title="House Information">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <EditInput
+              <EditSelect
                 label="Floor Material"
                 name="floorMaterial"
                 value={record.floorMaterial}
                 onChange={onChange}
+                options={editSelectOptions.floorMaterial}
               />
 
-              <EditInput
+              <EditSelect
                 label="Wall Material"
                 name="wallMaterial"
                 value={record.wallMaterial}
                 onChange={onChange}
+                options={editSelectOptions.wallMaterial}
               />
 
-              <EditInput
+              <EditSelect
                 label="Roof Material"
                 name="roofMaterial"
                 value={record.roofMaterial}
                 onChange={onChange}
+                options={editSelectOptions.roofMaterial}
               />
 
-              <EditInput
+              <EditSelect
                 label="House Use"
                 name="houseUse"
                 value={record.houseUse}
                 onChange={onChange}
+                options={editSelectOptions.houseUse}
               />
 
-              <EditInput
+              <EditSelect
                 label="House Condition"
                 name="houseCondition"
                 value={record.houseCondition}
                 onChange={onChange}
+                options={editSelectOptions.houseCondition}
               />
             </div>
           </EditSection>
@@ -1584,46 +1783,52 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
 
           <EditSection title="Water & Sanitation">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <EditInput
+              <EditSelect
                 label="Drinking Water Source"
                 name="drinkingWaterSource"
                 value={record.drinkingWaterSource}
                 onChange={onChange}
+                options={editSelectOptions.drinkingWaterSource}
               />
 
-              <EditInput
+              <EditSelect
                 label="Drinking Water Location"
                 name="drinkingWaterLocation"
                 value={record.drinkingWaterLocation}
                 onChange={onChange}
+                options={editSelectOptions.drinkingWaterLocation}
               />
 
-              <EditInput
+              <EditSelect
                 label="Latrine Availability"
                 name="latrineAvailability"
                 value={record.latrineAvailability}
                 onChange={onChange}
+                options={editSelectOptions.latrineAvailability}
               />
 
-              <EditInput
+              <EditSelect
                 label="Latrine Type"
                 name="latrineType"
                 value={record.latrineType}
                 onChange={onChange}
+                options={editSelectOptions.latrineType}
               />
 
-              <EditInput
+              <EditSelect
                 label="Waste Water Drain"
                 name="wasteWaterDrain"
                 value={record.wasteWaterDrain}
                 onChange={onChange}
+                options={editSelectOptions.wasteWaterDrain}
               />
 
-              <EditInput
+              <EditSelect
                 label="Bathing Arrangement"
                 name="bathingArrangement"
                 value={record.bathingArrangement}
                 onChange={onChange}
+                options={editSelectOptions.bathingArrangement}
               />
             </div>
           </EditSection>
@@ -1632,25 +1837,28 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
 
           <EditSection title="Lighting & Cooking">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <EditInput
+              <EditSelect
                 label="Lighting Source"
                 name="lightingSource"
                 value={record.lightingSource}
                 onChange={onChange}
+                options={editSelectOptions.lightingSource}
               />
 
-              <EditInput
+              <EditSelect
                 label="Cooking Gas"
                 name="cookingGas"
                 value={record.cookingGas}
                 onChange={onChange}
+                options={editSelectOptions.cookingGas}
               />
 
-              <EditInput
+              <EditSelect
                 label="Cooking Fuel"
                 name="cookingFuel"
                 value={record.cookingFuel}
                 onChange={onChange}
+                options={editSelectOptions.cookingFuel}
               />
             </div>
           </EditSection>
@@ -1659,60 +1867,68 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
 
           <EditSection title="Technology & Assets">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <EditInput
+              <EditSelect
                 label="Radio"
                 name="radio"
                 value={record.radio}
                 onChange={onChange}
+                options={editSelectOptions.radio}
               />
 
-              <EditInput
+              <EditSelect
                 label="Television"
                 name="television"
                 value={record.television}
                 onChange={onChange}
+                options={editSelectOptions.television}
               />
 
-              <EditInput
+              <EditSelect
                 label="Internet"
                 name="internet"
                 value={record.internet}
                 onChange={onChange}
+                options={editSelectOptions.internet}
               />
 
-              <EditInput
+              <EditSelect
                 label="Laptop / Computer"
                 name="laptopComputer"
                 value={record.laptopComputer}
                 onChange={onChange}
+                options={editSelectOptions.laptopComputer}
               />
 
-              <EditInput
+              <EditSelect
                 label="Mobile Phone"
                 name="mobilePhone"
                 value={record.mobilePhone}
                 onChange={onChange}
+                options={editSelectOptions.mobilePhone}
               />
 
-              <EditInput
+              <EditSelect
                 label="Bicycle / Vehicle"
                 name="bicycleVehicle"
                 value={record.bicycleVehicle}
                 onChange={onChange}
+                options={editSelectOptions.bicycleVehicle}
               />
 
-              <EditInput
+              <EditSelect
                 label="Car / Van"
                 name="carVan"
                 value={record.carVan}
                 onChange={onChange}
+                options={editSelectOptions.carVan}
               />
 
-              <EditInput
+              <EditSelect
                 label="Main Food Grain"
                 name="mainFoodGrain"
                 value={record.mainFoodGrain}
                 onChange={onChange}
+                options={editSelectOptions.mainFoodGrain}
               />
             </div>
           </EditSection>
@@ -1817,6 +2033,7 @@ function EditInput({
   type = "text",
   readOnly = false,
   maxLength,
+  min,
   pattern,
 }) {
   return (
@@ -1832,6 +2049,7 @@ function EditInput({
         onChange={onChange}
         readOnly={readOnly}
         maxLength={maxLength}
+        min={min}
         pattern={pattern}
         className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition ${
           readOnly
@@ -1839,6 +2057,30 @@ function EditInput({
             : "border-gray-300 bg-white focus:border-green-600 focus:ring-2 focus:ring-green-100"
         }`}
       />
+    </div>
+  );
+}
+
+function EditSelect({ label, name, value, onChange, options }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-bold text-gray-600">
+        {label}
+      </label>
+
+      <select
+        name={name}
+        value={value ?? ""}
+        onChange={onChange}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+      >
+        <option value="">-- নির্বাচন করুন --</option>
+        {options.map((option, index) => (
+          <option key={`${name}-${index}`} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
