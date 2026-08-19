@@ -3,16 +3,34 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+
+      if (!currentUser) {
+        setIsAdmin(false);
+        return;
+      }
+
+      try {
+        const profileSnap = await getDoc(
+          doc(db, "enumerators", currentUser.uid),
+        );
+        const profile = profileSnap.exists() ? profileSnap.data() : null;
+        setIsAdmin(profile?.role === "admin" && profile?.status === "active");
+      } catch (error) {
+        console.error("Navbar profile loading error:", error);
+        setIsAdmin(false);
+      }
     });
 
     return () => unsubscribe();
@@ -67,6 +85,8 @@ export default function Navbar() {
                 <NavLink href="/census-2027">Data Collection</NavLink>
 
                 <NavLink href="/census-2027/data">Manage Data</NavLink>
+
+                {isAdmin && <NavLink href="/census-2027/users">Users</NavLink>}
               </>
             )}
           </div>
@@ -78,7 +98,7 @@ export default function Navbar() {
                 <div className="hidden text-right lg:block">
                   <p className="text-xs text-green-200">Signed in as</p>
 
-                  <p className="max-w-[180px] truncate text-sm font-semibold">
+                  <p className="max-w-45 truncate text-sm font-semibold">
                     {user.email}
                   </p>
                 </div>
@@ -162,6 +182,15 @@ export default function Navbar() {
                   >
                     Manage Data
                   </MobileNavLink>
+
+                  {isAdmin && (
+                    <MobileNavLink
+                      href="/census-2027/users"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Users
+                    </MobileNavLink>
+                  )}
                 </>
               )}
             </div>
