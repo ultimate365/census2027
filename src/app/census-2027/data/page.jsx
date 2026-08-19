@@ -8,8 +8,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  orderBy,
-  query,
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -313,21 +311,26 @@ export default function CensusDataPage() {
      LOAD RECORDS
   ======================================================= */
 
-  const loadRecords = async () => {
+  async function loadRecords() {
     try {
       setLoading(true);
       setError("");
 
       const recordsRef = collection(db, "census2027");
 
-      const q = query(recordsRef, orderBy("submittedAt", "desc"));
+      const snapshot = await getDocs(recordsRef);
 
-      const snapshot = await getDocs(q);
+      const loadedRecords = snapshot.docs
+        .map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }))
+        .sort((first, second) => {
+          const firstTime = first.submittedAt?.toMillis?.() || 0;
+          const secondTime = second.submittedAt?.toMillis?.() || 0;
 
-      const loadedRecords = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      }));
+          return secondTime - firstTime;
+        });
 
       setRecords(loadedRecords);
     } catch (err) {
@@ -345,7 +348,7 @@ export default function CensusDataPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   /* =======================================================
      VILLAGE LIST
