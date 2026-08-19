@@ -198,6 +198,20 @@ export default function Census2027Page() {
 
   const [messageType, setMessageType] = useState("");
 
+  const optionalHouseUseValues = [
+    "দোকান/অফিস",
+    "স্কুল/কলেজ",
+    "হোটেল/নিবাস/অতিথিশালা",
+    "হাসপাতাল/স্বাস্থ্যকেন্দ্র",
+    "কারখানা/ওয়ার্কশপ",
+    "ধর্মীয় স্থান",
+    "বাসগৃহ ছাড়া অন্য ব্যবহার",
+    "খালি",
+  ];
+
+  const isOptionalHouseUse = optionalHouseUseValues.includes(form.houseUse);
+  const requiredForHousehold = !isOptionalHouseUse;
+
   // =====================================================
   // HOUSEHOLD ID
   // =====================================================
@@ -562,11 +576,10 @@ export default function Census2027Page() {
       ["village", "গ্রাম / Locality"],
       ["houseAddress", "বাড়ির ঠিকানা"],
       ["buildingNo", "Building No."],
-      ["censusNo", "Census No."],
       ["headName", "গৃহপ্রধানের নাম"],
       ["selfEnumeration", "Self Enumeration"],
       ["householdMembers", "পরিবারের সদস্য সংখ্যা"],
-    ];
+    ].filter(() => requiredForHousehold);
 
     for (const [field, label] of requiredFields) {
       if (!form[field] || String(form[field]).trim() === "") {
@@ -594,7 +607,10 @@ export default function Census2027Page() {
     // MOBILE VALIDATION
     // =================================================
 
-    if (!/^[6-9]\d{9}$/.test(String(form.enumeratorMobile).trim())) {
+    if (
+      form.enumeratorMobile &&
+      !/^[6-9]\d{9}$/.test(String(form.enumeratorMobile).trim())
+    ) {
       setMessage("গণনাকারীর সঠিক ১০ সংখ্যার মোবাইল নম্বর দিন।");
 
       setMessageType("error");
@@ -639,15 +655,15 @@ export default function Census2027Page() {
 
     const calculatedMembers = male + female + other;
 
-    if (totalMembers !== calculatedMembers) {
-      setMessage(
-        `সদস্য সংখ্যায় ভুল আছে। পুরুষ (${male}) + মহিলা (${female}) + অন্যান্য (${other}) = ${calculatedMembers}; কিন্তু মোট সদস্য ${totalMembers}।`,
-      );
+    // if (form.householdMembers && totalMembers !== calculatedMembers) {
+    //   setMessage(
+    //     `সদস্য সংখ্যায় ভুল আছে। পুরুষ (${male}) + মহিলা (${female}) + অন্যান্য (${other}) = ${calculatedMembers}; কিন্তু মোট সদস্য ${totalMembers}।`,
+    //   );
 
-      setMessageType("error");
+    //   setMessageType("error");
 
-      return;
-    }
+    //   return;
+    // }
 
     // =================================================
     // GPS VALIDATION
@@ -1057,7 +1073,7 @@ export default function Census2027Page() {
                 name="householdId"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 readOnly
               />
 
@@ -1066,7 +1082,7 @@ export default function Census2027Page() {
                 name="enumeratorId"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 placeholder="গণনাকারীর ID"
               />
 
@@ -1075,7 +1091,7 @@ export default function Census2027Page() {
                 name="enumeratorName"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 placeholder="পূর্ণ নাম"
               />
 
@@ -1085,7 +1101,7 @@ export default function Census2027Page() {
                 form={form}
                 onChange={handleChange}
                 type="tel"
-                required
+                required={requiredForHousehold}
                 placeholder="১০ সংখ্যার মোবাইল নম্বর"
               />
             </div>
@@ -1102,7 +1118,7 @@ export default function Census2027Page() {
                 name="state"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 readOnly
               />
 
@@ -1111,7 +1127,7 @@ export default function Census2027Page() {
                 name="district"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
               />
 
               <Input
@@ -1126,7 +1142,7 @@ export default function Census2027Page() {
                 name="block"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
               />
 
               <Input
@@ -1148,7 +1164,7 @@ export default function Census2027Page() {
                 name="village"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
               />
 
               <Input
@@ -1172,14 +1188,16 @@ export default function Census2027Page() {
             <div className="mt-4">
               <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 বাড়ির পূর্ণ ঠিকানা
-                <span className="ml-1 text-red-500">*</span>
+                {requiredForHousehold && (
+                  <span className="ml-1 text-red-500">*</span>
+                )}
               </label>
 
               <textarea
                 name="houseAddress"
                 value={form.houseAddress}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 rows={3}
                 placeholder="বাড়ির পূর্ণ ঠিকানা লিখুন"
                 autoCapitalize="characters"
@@ -1200,7 +1218,7 @@ export default function Census2027Page() {
                 name="buildingNo"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
               />
 
               <Input
@@ -1216,7 +1234,7 @@ export default function Census2027Page() {
                 name="headName"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 placeholder="গৃহপ্রধানের পূর্ণ নাম"
               />
 
@@ -1236,7 +1254,7 @@ export default function Census2027Page() {
                 name="selfEnumeration"
                 form={form}
                 onChange={handleChange}
-                required
+                required={requiredForHousehold}
                 options={["হ্যাঁ", "না"]}
               />
             </div>
@@ -1248,7 +1266,7 @@ export default function Census2027Page() {
                   name="selfEnumerationID"
                   form={form}
                   onChange={handleChange}
-                  required
+                  required={requiredForHousehold}
                   placeholder="১২ অক্ষরের Capital Alpha Numeric Code"
                   maxLength={12}
                   pattern="[A-Z0-9]{12}"
@@ -1361,7 +1379,8 @@ export default function Census2027Page() {
           ================================================= */}
 
           <Section number="৬" title="পরিবারের সদস্য সংখ্যা">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"> */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
                 label="পরিবারের মোট সদস্য"
                 name="householdMembers"
@@ -1369,10 +1388,10 @@ export default function Census2027Page() {
                 onChange={handleChange}
                 type="number"
                 min="0"
-                required
+                required={requiredForHousehold}
               />
 
-              <Input
+              {/* <Input
                 label="পুরুষ"
                 name="maleMembers"
                 form={form}
@@ -1400,7 +1419,7 @@ export default function Census2027Page() {
               />
             </div>
 
-            <div className="mt-4 max-w-xs">
+            <div className="mt-4 max-w-xs"> */}
               <Input
                 label="বিবাহিত দম্পতির সংখ্যা"
                 name="marriedCouples"

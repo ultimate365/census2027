@@ -918,10 +918,10 @@ function RecordRow({
           {record.householdMembers ?? "—"}
         </p>
 
-        <p className="mt-0.5 text-xs text-gray-500">
+        {/* <p className="mt-0.5 text-xs text-gray-500">
           M: {record.maleMembers ?? 0} F: {record.femaleMembers ?? 0} O:{" "}
           {record.otherMembers ?? 0}
-        </p>
+        </p> */}
       </td>
 
       <td className="px-4 py-4">
