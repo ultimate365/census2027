@@ -1447,7 +1447,7 @@ function DetailsModal({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col-reverse gap-2 border-t border-gray-200 pt-4 sm:flex-row sm:justify-end">
+      <div className="mt-2 flex flex-row-reverse gap-2 border-t border-gray-200 pt-2 sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={onClose}
@@ -1461,7 +1461,7 @@ function DetailsModal({
           onClick={onEdit}
           className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
         >
-          Edit Record
+          Edit
         </button>
 
         {isAdmin && (
@@ -1471,7 +1471,7 @@ function DetailsModal({
             disabled={deleting}
             className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
           >
-            {deleting ? "Deleting..." : "Delete Record"}
+            {deleting ? "Deleting..." : "Delete"}
           </button>
         )}
       </div>
