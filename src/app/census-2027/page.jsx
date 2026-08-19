@@ -123,7 +123,7 @@ export default function Census2027Page() {
     longitude: "",
 
     // Census
-    buildingNo: "",
+    buildingNo: "CN",
     censusNo: "",
     headName: "",
     headMobile: "",
