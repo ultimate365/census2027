@@ -1796,21 +1796,18 @@ export default function Census2027Page() {
 
               <ul className="mt-3 space-y-2 text-sm text-yellow-900">
                 <li>
-                  ✓ Building No.: {form.buildingNo || "Not provided"} এবং Census
-                  No. {form.censusNo || "Not provided"} সঠিক আছে।
+                  ✓ Building No.{" "}
+                  {(form.buildingNo.split("CN")[1] && form.buildingNo) || ""}{" "}
+                  এবং Census No. সঠিক আছে।
                 </li>
 
                 <li>
-                  ✓ গৃহপ্রধানের নাম: {form.headOfHousehold || "Not provided"}{" "}
-                  সঠিকভাবে লেখা হয়েছে।
+                  ✓ গৃহপ্রধানের নাম {form.headName || ""} সঠিকভাবে লেখা হয়েছে।
                 </li>
 
-                <li>
-                  ✓ মোট সদস্য: {form.totalMembers || "Not provided"} এবং
-                  পুরুষ/মহিলা/অন্যান্য সদস্যের সংখ্যা মিলছে।
-                </li>
+                <li>✓ মোট সদস্য সংখ্যা {form.totalMembers || ""} ।</li>
 
-                <li>✓ বাড়ির ঠিকানা সঠিক।</li>
+                {/* <li>✓ বাড়ির ঠিকানা সঠিক।</li> */}
 
                 <li>
                   ✓ পানীয় জল, শৌচালয়, রান্নার জ্বালানি ইত্যাদির তথ্য যাচাই করা
