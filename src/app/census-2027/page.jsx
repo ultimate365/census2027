@@ -1795,12 +1795,19 @@ export default function Census2027Page() {
               </p>
 
               <ul className="mt-3 space-y-2 text-sm text-yellow-900">
-                <li>✓ Building No. এবং Census No. সঠিক আছে।</li>
-
-                <li>✓ গৃহপ্রধানের নাম সঠিকভাবে লেখা হয়েছে।</li>
+                <li>
+                  ✓ Building No.: {form.buildingNo || "Not provided"} এবং Census
+                  No. {form.censusNo || "Not provided"} সঠিক আছে।
+                </li>
 
                 <li>
-                  ✓ মোট সদস্য এবং পুরুষ/মহিলা/অন্যান্য সদস্যের সংখ্যা মিলছে।
+                  ✓ গৃহপ্রধানের নাম: {form.headOfHousehold || "Not provided"}{" "}
+                  সঠিকভাবে লেখা হয়েছে।
+                </li>
+
+                <li>
+                  ✓ মোট সদস্য: {form.totalMembers || "Not provided"} এবং
+                  পুরুষ/মহিলা/অন্যান্য সদস্যের সংখ্যা মিলছে।
                 </li>
 
                 <li>✓ বাড়ির ঠিকানা সঠিক।</li>
