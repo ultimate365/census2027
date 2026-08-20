@@ -277,9 +277,7 @@ export default function CensusDataPage() {
 
           setUserProfile(profile);
 
-          // Pending users should not
-          // access this page.
-          if (profile.status !== "active") {
+          if (profile.role !== "admin" || profile.status !== "active") {
             router.replace("/");
             return;
           }

@@ -44,7 +44,7 @@ export default function UserManagementPage() {
           currentProfile?.role !== "admin" ||
           currentProfile.status !== "active"
         ) {
-          router.replace("/census-2027/data");
+          router.replace("/census-2027/my-data");
           return;
         }
 

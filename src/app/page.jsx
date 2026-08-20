@@ -277,10 +277,10 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="/census-2027/data"
+                  href="/census-2027/my-data"
                   className="rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-center text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
                 >
-                  View / Manage Data
+                  View My Data
                 </Link>
               </div>
             </div>
@@ -357,11 +357,11 @@ export default function HomePage() {
           />
 
           <DashboardCard
-            href="/census-2027/data"
+            href="/census-2027/my-data"
             icon="📊"
-            title="View & Manage Data"
-            description="Search, view and modify previously submitted household records."
-            button="Manage Records"
+            title="View My Data"
+            description="Search and view the household records you have submitted."
+            button="View Records"
           />
         </div>
       </section>

@@ -26,7 +26,7 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/census-2027/data");
+        router.replace("/census-2027/my-data");
       } else {
         setCheckingAuth(false);
       }
@@ -57,7 +57,7 @@ export default function LoginPage() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      router.replace("/census-2027/data");
+      router.replace("/census-2027/my-data");
     } catch (error) {
       console.error("Login error:", error);
 

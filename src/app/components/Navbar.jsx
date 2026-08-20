@@ -84,7 +84,11 @@ export default function Navbar() {
               <>
                 <NavLink href="/census-2027">Data Collection</NavLink>
 
-                <NavLink href="/census-2027/data">Manage Data</NavLink>
+                {isAdmin ? (
+                  <NavLink href="/census-2027/data">Manage Data</NavLink>
+                ) : (
+                  <NavLink href="/census-2027/my-data">My Data</NavLink>
+                )}
 
                 {isAdmin && <NavLink href="/census-2027/users">Users</NavLink>}
               </>
@@ -176,12 +180,21 @@ export default function Navbar() {
                     Data Collection
                   </MobileNavLink>
 
-                  <MobileNavLink
-                    href="/census-2027/data"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Manage Data
-                  </MobileNavLink>
+                  {isAdmin ? (
+                    <MobileNavLink
+                      href="/census-2027/data"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Manage Data
+                    </MobileNavLink>
+                  ) : (
+                    <MobileNavLink
+                      href="/census-2027/my-data"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      My Data
+                    </MobileNavLink>
+                  )}
 
                   {isAdmin && (
                     <MobileNavLink
