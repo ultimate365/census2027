@@ -185,6 +185,39 @@ const createDownloadLink = (myData, fileName) => {
   document.body.removeChild(link);
   URL.revokeObjectURL(href);
 };
+
+const getRecordTimestamp = (value) => {
+  if (!value) return null;
+
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  if (typeof value.seconds === "number") {
+    return value.seconds * 1000 + (value.nanoseconds || 0) / 1000000;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const compareRecordsBySubmission = (first, second) => {
+  const firstTime =
+    getRecordTimestamp(first.submittedAt) ??
+    getRecordTimestamp(first.createdAt);
+  const secondTime =
+    getRecordTimestamp(second.submittedAt) ??
+    getRecordTimestamp(second.createdAt);
+
+  if (firstTime === null && secondTime === null) {
+    return first.id.localeCompare(second.id);
+  }
+
+  if (firstTime === null) return 1;
+  if (secondTime === null) return -1;
+
+  return secondTime - firstTime || first.id.localeCompare(second.id);
+};
 /* =========================================================
    MAIN PAGE
 ========================================================= */
@@ -327,12 +360,7 @@ export default function CensusDataPage() {
           id: item.id,
           ...item.data(),
         }))
-        .sort((first, second) => {
-          const firstTime = first.submittedAt?.toMillis?.() || 0;
-          const secondTime = second.submittedAt?.toMillis?.() || 0;
-
-          return secondTime - firstTime;
-        });
+        .sort(compareRecordsBySubmission);
 
       setRecords(loadedRecords);
     } catch (err) {

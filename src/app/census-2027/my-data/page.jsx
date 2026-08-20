@@ -169,6 +169,39 @@ const editSelectOptions = {
   mainFoodGrain: ["ধান", "গম", "জোয়ার", "বাজরা", "ভুট্টা", "অন্যান্য"],
 };
 
+const getRecordTimestamp = (value) => {
+  if (!value) return null;
+
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  if (typeof value.seconds === "number") {
+    return value.seconds * 1000 + (value.nanoseconds || 0) / 1000000;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const compareRecordsBySubmission = (first, second) => {
+  const firstTime =
+    getRecordTimestamp(first.submittedAt) ??
+    getRecordTimestamp(first.createdAt);
+  const secondTime =
+    getRecordTimestamp(second.submittedAt) ??
+    getRecordTimestamp(second.createdAt);
+
+  if (firstTime === null && secondTime === null) {
+    return first.id.localeCompare(second.id);
+  }
+
+  if (firstTime === null) return 1;
+  if (secondTime === null) return -1;
+
+  return secondTime - firstTime || first.id.localeCompare(second.id);
+};
+
 export default function MyDataPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -217,11 +250,7 @@ export default function MyDataPage() {
 
         const loadedRecords = recordsSnapshot.docs
           .map((item) => ({ id: item.id, ...item.data() }))
-          .sort(
-            (first, second) =>
-              (second.submittedAt?.toMillis?.() || 0) -
-              (first.submittedAt?.toMillis?.() || 0),
-          );
+          .sort(compareRecordsBySubmission);
 
         setRecords(loadedRecords);
       } catch (loadError) {
