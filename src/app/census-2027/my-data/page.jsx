@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -20,10 +23,13 @@ export default function MyDataPage() {
   const [profile, setProfile] = useState(null);
   const [records, setRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -101,6 +107,95 @@ export default function MyDataPage() {
     return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("en-IN");
   };
 
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+    setEditingRecord((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecord?.id || !user) return;
+
+    if (editingRecord.enumeratorUid !== user.uid) {
+      setError("এই record update করার অনুমতি আপনার নেই।");
+      return;
+    }
+
+    const dataToSave = { ...editingRecord };
+    delete dataToSave.id;
+    ["enumeratorUid", "submittedAt", "createdAt", "updatedAt"].forEach(
+      (field) => delete dataToSave[field],
+    );
+
+    const numericFields = [
+      "householdMembers",
+      "roomCount",
+      "maleMembers",
+      "femaleMembers",
+      "otherMembers",
+      "marriedCouples",
+      "latitude",
+      "longitude",
+    ];
+
+    numericFields.forEach((field) => {
+      if (!(field in dataToSave)) return;
+      dataToSave[field] =
+        dataToSave[field] === "" ? null : Number(dataToSave[field]);
+    });
+
+    try {
+      setSaving(true);
+      setError("");
+      await updateDoc(doc(db, "census2027", editingRecord.id), {
+        ...dataToSave,
+        updatedAt: serverTimestamp(),
+        lastModifiedBy: user.uid,
+        lastModifiedByEmail: user.email || "",
+      });
+
+      setRecords((current) =>
+        current.map((record) =>
+          record.id === editingRecord.id
+            ? { ...record, ...dataToSave }
+            : record,
+        ),
+      );
+      setEditingRecord(null);
+      setMessage("Census record সফলভাবে update হয়েছে।");
+    } catch (saveError) {
+      console.error("My data update error:", saveError);
+      setError(saveError.message || "Record update করা যায়নি।");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (record) => {
+    if (!user || record.enumeratorUid !== user.uid) {
+      setError("এই record delete করার অনুমতি আপনার নেই।");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Household ID: ${record.householdId || "—"} delete করবেন?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setError("");
+      await deleteDoc(doc(db, "census2027", record.id));
+      setRecords((current) => current.filter((item) => item.id !== record.id));
+      setSelectedRecord(null);
+      setMessage("Record সফলভাবে delete হয়েছে।");
+    } catch (deleteError) {
+      console.error("My data delete error:", deleteError);
+      setError(deleteError.message || "Record delete করা যায়নি।");
+    }
+  };
+
   if (checkingAuth) return <LoadingState label="Checking authentication..." />;
   if (!user || !profile) return null;
 
@@ -118,6 +213,7 @@ export default function MyDataPage() {
         </header>
 
         {error && <Notice type="error">{error}</Notice>}
+        {message && <Notice type="success">{message}</Notice>}
 
         <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -171,13 +267,29 @@ export default function MyDataPage() {
                         {formatDate(record.submittedAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedRecord(record)}
-                          className="rounded-lg bg-green-700 px-3 py-2 text-xs font-bold text-white hover:bg-green-800"
-                        >
-                          View
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRecord(record)}
+                            className="rounded-lg bg-green-700 px-3 py-2 text-xs font-bold text-white hover:bg-green-800"
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRecord({ ...record })}
+                            className="rounded-lg border border-green-700 px-3 py-2 text-xs font-bold text-green-700 hover:bg-green-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(record)}
+                            className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -213,6 +325,25 @@ export default function MyDataPage() {
                   Close
                 </button>
               </div>
+              <div className="mt-5 flex gap-2 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingRecord({ ...selectedRecord });
+                    setSelectedRecord(null);
+                  }}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800"
+                >
+                  Edit Record
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(selectedRecord)}
+                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50"
+                >
+                  Delete Record
+                </button>
+              </div>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {Object.entries(selectedRecord)
                   .filter(([key]) => key !== "id")
@@ -231,6 +362,78 @@ export default function MyDataPage() {
                       </p>
                     </div>
                   ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {editingRecord && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <section className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+              <div className="flex items-start justify-between gap-4 border-b border-gray-200 pb-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-green-700">
+                    Edit Record
+                  </p>
+                  <h2 className="mt-1 text-xl font-black text-gray-800">
+                    {editingRecord.householdId || "Household details"}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  disabled={saving}
+                  className="rounded-lg px-3 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {Object.entries(editingRecord)
+                  .filter(
+                    ([key, value]) =>
+                      key !== "id" &&
+                      ![
+                        "enumeratorUid",
+                        "submittedAt",
+                        "createdAt",
+                        "updatedAt",
+                      ].includes(key) &&
+                      typeof value !== "object",
+                  )
+                  .map(([key, value]) => (
+                    <label
+                      key={key}
+                      className="text-sm font-semibold text-gray-700"
+                    >
+                      {key}
+                      <input
+                        name={key}
+                        value={value ?? ""}
+                        onChange={handleEditChange}
+                        disabled={saving || key === "householdId"}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+                      />
+                    </label>
+                  ))}
+              </div>
+              <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  disabled={saving}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
               </div>
             </section>
           </div>
