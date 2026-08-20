@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const getEnumeratorProfileStorageKey = (uid) =>
@@ -1043,6 +1044,13 @@ export default function Census2027Page() {
                     ? "Administrator"
                     : "Enumerator"}
                 </p>
+
+                <Link
+                  href="/census-2027/my-data"
+                  className="mt-3 inline-block rounded-lg bg-white px-4 py-2 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
+                >
+                  Go to My Data
+                </Link>
               </div>
             )}
           </div>

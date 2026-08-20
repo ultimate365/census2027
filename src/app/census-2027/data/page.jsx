@@ -222,6 +222,10 @@ export default function CensusDataPage() {
 
   const [villageFilter, setVillageFilter] = useState("all");
 
+  const [enumeratorFilter, setEnumeratorFilter] = useState("all");
+
+  const [enumeratorValue, setEnumeratorValue] = useState("all");
+
   /* -------------------------------------------------------
      VIEW
   ------------------------------------------------------- */
@@ -277,7 +281,7 @@ export default function CensusDataPage() {
 
           setUserProfile(profile);
 
-          if (profile.role !== "admin" || profile.status !== "active") {
+          if (profile.role !== "admin") {
             router.replace("/");
             return;
           }
@@ -360,6 +364,16 @@ export default function CensusDataPage() {
     );
   }, [records]);
 
+  const enumeratorValues = useMemo(() => {
+    const values = records
+      .map((record) => record[enumeratorFilter])
+      .filter(Boolean);
+
+    return [...new Set(values)].sort((a, b) =>
+      String(a).localeCompare(String(b)),
+    );
+  }, [records, enumeratorFilter]);
+
   /* =======================================================
      FILTERED RECORDS
   ======================================================= */
@@ -394,9 +408,22 @@ export default function CensusDataPage() {
       const matchesVillage =
         villageFilter === "all" || record.village === villageFilter;
 
-      return matchesSearch && matchesStatus && matchesVillage;
+      const matchesEnumerator =
+        enumeratorValue === "all" ||
+        record[enumeratorFilter] === enumeratorValue;
+
+      return (
+        matchesSearch && matchesStatus && matchesVillage && matchesEnumerator
+      );
     });
-  }, [records, search, statusFilter, villageFilter]);
+  }, [
+    records,
+    search,
+    statusFilter,
+    villageFilter,
+    enumeratorFilter,
+    enumeratorValue,
+  ]);
 
   /* =======================================================
      DATE FORMAT
@@ -820,10 +847,10 @@ export default function CensusDataPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
             {/* SEARCH */}
 
-            <div className="md:col-span-1">
+            <div className="md:col-span-2 lg:col-span-2">
               <label className="mb-1.5 block text-xs font-bold text-gray-600">
                 Search
               </label>
@@ -841,6 +868,54 @@ export default function CensusDataPage() {
                   className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 />
               </div>
+            </div>
+
+            {/* ENUMERATOR FILTER */}
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-gray-600">
+                Filter by Enumerator
+              </label>
+
+              <select
+                value={enumeratorFilter}
+                onChange={(e) => {
+                  setEnumeratorFilter(e.target.value);
+                  setEnumeratorValue("all");
+                }}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              >
+                <option value="all">All Enumerators</option>
+                <option value="enumeratorId">Enumerator ID</option>
+                <option value="enumeratorMobile">Mobile Number</option>
+              </select>
+            </div>
+
+            {/* ENUMERATOR VALUE */}
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-gray-600">
+                Enumerator Value
+              </label>
+
+              <select
+                value={enumeratorValue}
+                onChange={(e) => setEnumeratorValue(e.target.value)}
+                disabled={enumeratorFilter === "all"}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+              >
+                <option value="all">
+                  {enumeratorFilter === "all"
+                    ? "Choose a filter first"
+                    : "All values"}
+                </option>
+
+                {enumeratorValues.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* STATUS */}
@@ -888,13 +963,19 @@ export default function CensusDataPage() {
             </div>
           </div>
 
-          {(search || statusFilter !== "all" || villageFilter !== "all") && (
+          {(search ||
+            statusFilter !== "all" ||
+            villageFilter !== "all" ||
+            enumeratorFilter !== "all" ||
+            enumeratorValue !== "all") && (
             <button
               type="button"
               onClick={() => {
                 setSearch("");
                 setStatusFilter("all");
                 setVillageFilter("all");
+                setEnumeratorFilter("all");
+                setEnumeratorValue("all");
               }}
               className="mt-3 text-xs font-bold text-red-600 hover:text-red-800"
             >
