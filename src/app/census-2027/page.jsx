@@ -145,9 +145,9 @@ export default function Census2027Page() {
     block: "AMTA-II",
     gramPanchayat: "THALIA",
     ward: "",
-    village: "SEHAGORI",
+    village: "",
     locality: "",
-    houseAddress: "SEHAGORI, THALIA, AMTA-II, HOWRAH, WEST BENGAL",
+    houseAddress: "AMTA-II, HOWRAH, WEST BENGAL",
     pinCode: "711401",
 
     // GPS
@@ -314,6 +314,8 @@ export default function Census2027Page() {
               cachedProfile.phone ||
               prev.enumeratorMobile ||
               "",
+            locality: cachedProfile.locality || prev.locality || "",
+            village: cachedProfile.village || prev.village || "",
           }));
 
           setCheckingAuth(false);
@@ -398,6 +400,10 @@ export default function Census2027Page() {
 
           enumeratorMobile:
             profile.mobile || profile.phone || prev.enumeratorMobile || "",
+
+          locality: profile.locality || prev.locality || "",
+
+          village: profile.village || prev.village || "",
         }));
 
         setCheckingAuth(false);
@@ -545,6 +551,10 @@ export default function Census2027Page() {
       enumeratorName: userProfile?.name || user?.displayName || "",
 
       enumeratorMobile: userProfile?.mobile || userProfile?.phone || "",
+
+      locality: userProfile?.locality || "",
+
+      village: userProfile?.village || "",
     });
 
     setMessage("");

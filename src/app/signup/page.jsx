@@ -29,6 +29,8 @@ export default function SignupPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    locality: "",
+    village: "",
   });
 
   // =====================================================
@@ -119,6 +121,10 @@ export default function SignupPage() {
 
     const enumeratorId = form.enumeratorId.trim();
 
+    const locality = form.locality.trim();
+
+    const village = form.village.trim();
+
     const mobile = form.mobile.trim();
 
     const email = form.email.trim().toLowerCase();
@@ -145,6 +151,18 @@ export default function SignupPage() {
 
     if (!enumeratorId) {
       return "Enumerator ID লিখুন।";
+    }
+
+    // -----------------------------------------------
+    // LOCATION
+    // -----------------------------------------------
+
+    if (!locality) {
+      return "Locality লিখুন।";
+    }
+
+    if (!village) {
+      return "Village লিখুন।";
     }
 
     // -----------------------------------------------
@@ -215,6 +233,10 @@ export default function SignupPage() {
 
       const enumeratorId = form.enumeratorId.trim();
 
+      const locality = form.locality.trim();
+
+      const village = form.village.trim();
+
       const mobile = form.mobile.trim();
 
       const email = form.email.trim().toLowerCase();
@@ -267,6 +289,10 @@ export default function SignupPage() {
         name,
 
         enumeratorId,
+
+        locality,
+
+        village,
 
         mobile,
 
@@ -329,6 +355,8 @@ export default function SignupPage() {
         email: "",
         password: "",
         confirmPassword: "",
+        locality: "",
+        village: "",
       });
     } catch (error) {
       console.error("Signup error:", error);
@@ -495,6 +523,52 @@ export default function SignupPage() {
               <p className="mt-1.5 text-xs text-gray-500">
                 আপনাকে দেওয়া Enumerator ID ব্যবহার করুন।
               </p>
+            </div>
+
+            {/* =================================================
+                LOCATION
+            ================================================= */}
+
+            <div>
+              <label
+                htmlFor="locality"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
+                Locality
+                <span className="ml-1 text-red-500">*</span>
+              </label>
+
+              <input
+                id="locality"
+                name="locality"
+                type="text"
+                value={form.locality}
+                onChange={handleChange}
+                placeholder="Census Locality লিখুন"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="village"
+                className="mb-1.5 block text-sm font-bold text-gray-700"
+              >
+                Village
+                <span className="ml-1 text-red-500">*</span>
+              </label>
+
+              <input
+                id="village"
+                name="village"
+                type="text"
+                value={form.village}
+                onChange={handleChange}
+                placeholder="Census Village লিখুন"
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+              />
             </div>
 
             {/* =================================================
