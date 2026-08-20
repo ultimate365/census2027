@@ -1295,6 +1295,30 @@ function DetailsModal({
   deleting,
   formatDate,
 }) {
+  const hasGpsValues =
+    record.latitude !== null &&
+    record.latitude !== undefined &&
+    record.latitude !== "" &&
+    record.longitude !== null &&
+    record.longitude !== undefined &&
+    record.longitude !== "";
+  const latitude = Number(record.latitude);
+  const longitude = Number(record.longitude);
+  const hasGpsLocation =
+    hasGpsValues &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
+  const mapUrl = hasGpsLocation
+    ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=18&t=k&output=embed`
+    : "";
+  const mapLink = hasGpsLocation
+    ? `https://www.google.com/maps/@?api=1&map_action=map&center=${latitude},${longitude}&zoom=18&basemap=satellite`
+    : "";
+
   const sections = [
     {
       title: "Identification",
@@ -1442,6 +1466,30 @@ function DetailsModal({
                   </div>
                 ))}
               </div>
+
+              {section.title === "GPS Location" && hasGpsLocation && (
+                <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  <iframe
+                    title="Household location map"
+                    src={mapUrl}
+                    className="h-64 w-full border-0"
+                    loading="lazy"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-3 py-2">
+                    <span className="text-xs text-gray-500">
+                      {latitude}, {longitude}
+                    </span>
+                    <a
+                      href={mapLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-bold text-green-700 hover:text-green-800 hover:underline"
+                    >
+                      Open in Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
