@@ -928,38 +928,38 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
     {
       title: "Identification",
       fields: [
-        ["Household ID", record.householdId],
-        ["Survey Year", record.surveyYear],
-        ["Status", record.status],
+        // ["Household ID", record.householdId],
+        // ["Survey Year", record.surveyYear],
+        // ["Status", record.status],
         ["Building No.", record.buildingNo],
         ["Census No.", record.censusNo],
       ],
     },
-    {
-      title: "Enumerator",
-      fields: [
-        ["Enumerator ID", record.enumeratorId],
-        ["Enumerator Name", record.enumeratorName],
-        ["Enumerator Mobile", record.enumeratorMobile],
-        ["Enumerator Email", record.enumeratorEmail],
-        ["Enumerator UID", record.enumeratorUid],
-      ],
-    },
-    {
-      title: "Administrative Information",
-      fields: [
-        ["State", record.state],
-        ["District", record.district],
-        ["Subdivision", record.subdivision],
-        ["Block", record.block],
-        ["Gram Panchayat", record.gramPanchayat],
-        ["Ward", record.ward],
-        ["Village", record.village],
-        ["Locality", record.locality],
-        ["PIN Code", record.pinCode],
-        ["House Address", record.houseAddress],
-      ],
-    },
+    // {
+    //   title: "Enumerator",
+    //   fields: [
+    //     ["Enumerator ID", record.enumeratorId],
+    //     ["Enumerator Name", record.enumeratorName],
+    //     ["Enumerator Mobile", record.enumeratorMobile],
+    //     ["Enumerator Email", record.enumeratorEmail],
+    //     ["Enumerator UID", record.enumeratorUid],
+    //   ],
+    // },
+    // {
+    //   title: "Administrative Information",
+    //   fields: [
+    //     ["State", record.state],
+    //     ["District", record.district],
+    //     ["Subdivision", record.subdivision],
+    //     ["Block", record.block],
+    //     ["Gram Panchayat", record.gramPanchayat],
+    //     ["Ward", record.ward],
+    //     ["Village", record.village],
+    //     ["Locality", record.locality],
+    //     ["PIN Code", record.pinCode],
+    //     ["House Address", record.houseAddress],
+    //   ],
+    // },
     {
       title: "Household",
       fields: [
@@ -1130,13 +1130,13 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
         <div className="space-y-6">
           <EditSection title="Identification">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <EditInput
+              {/* <EditInput
                 label="Household ID"
                 name="householdId"
                 value={record.householdId}
                 onChange={onChange}
                 readOnly
-              />
+              /> */}
               <EditInput
                 label="Building No."
                 name="buildingNo"
@@ -1152,7 +1152,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
             </div>
           </EditSection>
 
-          <EditSection title="Enumerator">
+          {/* <EditSection title="Enumerator">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <EditInput
                 label="Enumerator ID"
@@ -1246,7 +1246,7 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
               value={record.houseAddress}
               onChange={onChange}
             />
-          </EditSection>
+          </EditSection> */}
 
           <EditSection title="Household">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
