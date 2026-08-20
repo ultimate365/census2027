@@ -1805,7 +1805,7 @@ export default function Census2027Page() {
                   ✓ গৃহপ্রধানের নাম {form.headName || ""} সঠিকভাবে লেখা হয়েছে।
                 </li>
 
-                <li>✓ মোট সদস্য সংখ্যা {form.totalMembers || ""} ।</li>
+                <li>✓ মোট সদস্য সংখ্যা {form.householdMembers || ""} ।</li>
 
                 {/* <li>✓ বাড়ির ঠিকানা সঠিক।</li> */}
 
