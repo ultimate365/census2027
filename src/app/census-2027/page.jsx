@@ -603,6 +603,10 @@ export default function Census2027Page() {
       return;
     }
 
+    const village = String(form.village || profile.village || "").trim();
+
+    const locality = String(form.locality || profile.locality || "").trim();
+
     // =================================================
     // REQUIRED FIELDS
     // =================================================
@@ -613,7 +617,6 @@ export default function Census2027Page() {
       ["enumeratorMobile", "গণনাকারীর মোবাইল"],
       ["district", "জেলা"],
       ["block", "ব্লক / Municipality"],
-      ["village", "গ্রাম / Locality"],
       ["houseAddress", "বাড়ির ঠিকানা"],
       ["buildingNo", "Building No."],
       ["headName", "গৃহপ্রধানের নাম"],
@@ -629,6 +632,16 @@ export default function Census2027Page() {
 
         return;
       }
+    }
+
+    if (requiredForHousehold && !village && !locality) {
+      setMessage(
+        "Village অথবা Locality-এর অন্তত একটি তথ্য profile-এ থাকতে হবে।",
+      );
+
+      setMessageType("error");
+
+      return;
     }
 
     if (form.selfEnumeration === "হ্যাঁ") {
@@ -800,9 +813,9 @@ export default function Census2027Page() {
 
         ward: form.ward,
 
-        village: form.village,
+        village,
 
-        locality: form.locality,
+        locality,
 
         houseAddress: form.houseAddress,
 
@@ -968,6 +981,10 @@ export default function Census2027Page() {
 
         enumeratorMobile:
           profile.mobile || profile.phone || form.enumeratorMobile || "",
+
+        village: profile.village || form.village || "",
+
+        locality: profile.locality || form.locality || "",
       });
 
       window.scrollTo({
