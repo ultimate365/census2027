@@ -16,7 +16,22 @@ import {
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+const createDownloadLink = (myData, fileName) => {
+  const json = JSON.stringify(myData, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const href = URL.createObjectURL(blob);
 
+  // create "a" HTLM element with href to file
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = fileName + ".json";
+  document.body.appendChild(link);
+  link.click();
+
+  // clean up "a" element & remove ObjectURL
+  document.body.removeChild(link);
+  URL.revokeObjectURL(href);
+};
 const editSelectOptions = {
   selfEnumeration: ["হ্যাঁ", "না"],
   floorMaterial: [
@@ -501,6 +516,15 @@ export default function MyDataPage() {
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                className="rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-orange-600"
+                onClick={() => {
+                  createDownloadLink(filteredRecords, "entry-data");
+                }}
+              >
+                Download Data
+              </button>
               <button
                 type="button"
                 onClick={() => router.push("/census-2027")}

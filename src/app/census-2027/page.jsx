@@ -317,9 +317,6 @@ export default function Census2027Page() {
             locality: cachedProfile.locality || prev.locality || "",
             village: cachedProfile.village || prev.village || "",
           }));
-
-          setCheckingAuth(false);
-          return;
         }
 
         // -------------------------------------------
@@ -971,6 +968,10 @@ export default function Census2027Page() {
 
         enumeratorMobile:
           profile.mobile || profile.phone || form.enumeratorMobile || "",
+
+        locality: profile.locality || form.locality || "",
+
+        village: profile.village || form.village || "",
       });
 
       window.scrollTo({
