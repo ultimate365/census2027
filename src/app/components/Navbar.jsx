@@ -54,7 +54,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-green-900/20 bg-green-900 text-white shadow-lg">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="relative flex h-16 items-center justify-between">
           {/* LOGO */}
           <Link
             href="/"
@@ -67,7 +67,7 @@ export default function Navbar() {
 
             <div className="hidden sm:block">
               <div className="text-base font-bold leading-tight">
-                Census 2027
+                Census of India 2027
               </div>
 
               <div className="text-[10px] text-green-200">
@@ -75,6 +75,10 @@ export default function Navbar() {
               </div>
             </div>
           </Link>
+
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-xl font-bold sm:hidden">
+            Census of India 2027
+          </div>
 
           {/* DESKTOP NAVIGATION */}
           <div className="hidden items-center gap-1 md:flex">

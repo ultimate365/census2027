@@ -506,9 +506,11 @@ export default function MyDataPage() {
           <div className="flex flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-widest text-green-200">
-                Enumerator
+                {profile?.name || user?.name || user?.email || "Enumerator"}
               </div>
-              <h1 className="mt-1 text-2xl font-black sm:text-3xl">My Data</h1>
+              <h1 className="mt-1 text-xl font-black sm:text-2xl">
+                Your Submitted Data
+              </h1>
               <p className="mt-1 text-sm text-green-100">
                 আপনার submit করা {records.length}টি household record এখানে
                 দেখুন।
@@ -520,7 +522,10 @@ export default function MyDataPage() {
                 type="button"
                 className="rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-orange-600"
                 onClick={() => {
-                  createDownloadLink(filteredRecords, "entry-data");
+                  createDownloadLink(
+                    filteredRecords,
+                    user?.email?.split("@")[0] || "Enumerator",
+                  );
                 }}
               >
                 Download Data
