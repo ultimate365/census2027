@@ -17,6 +17,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 
 import { useRouter } from "next/navigation";
+import { CensusPDFButton, CensusBulkPDFButton } from "@/pdf/Census2027PDF";
 
 const editSelectOptions = {
   selfEnumeration: ["হ্যাঁ", "না"],
@@ -781,8 +782,9 @@ export default function CensusDataPage() {
                   createDownloadLink(filteredRecords, "entry-data");
                 }}
               >
-                Download Data
+                Download JSON Data
               </button>
+              <CensusBulkPDFButton records={filteredRecords} />
               <button
                 type="button"
                 onClick={loadRecords}
@@ -1222,7 +1224,7 @@ function RecordRow({
       </td>
 
       <td className="px-4 py-4">
-        <div className="flex justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
           <button
             type="button"
             onClick={() => onView(record)}
@@ -1252,6 +1254,7 @@ function RecordRow({
               {deletingId === record.id ? "..." : "Delete"}
             </button>
           )}
+          <CensusPDFButton data={record} className="shrink-0" />
         </div>
       </td>
     </tr>
@@ -1310,11 +1313,11 @@ function RecordCard({
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => onView(record)}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="shrink-0 rounded-lg border border-gray-300 px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             View
           </button>
@@ -1322,7 +1325,7 @@ function RecordCard({
           <button
             type="button"
             onClick={() => onEdit(record)}
-            className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+            className="shrink-0 rounded-lg bg-blue-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
           >
             Edit
           </button>
@@ -1332,11 +1335,12 @@ function RecordCard({
               type="button"
               onClick={() => onDelete(record)}
               disabled={deletingId === record.id}
-              className="flex-1 rounded-lg bg-red-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
+              className="shrink-0 rounded-lg bg-red-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
             >
               {deletingId === record.id ? "..." : "Delete"}
             </button>
           )}
+          <CensusPDFButton data={record} />
         </div>
       </div>
     </div>

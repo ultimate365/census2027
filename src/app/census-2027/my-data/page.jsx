@@ -16,6 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import { CensusPDFButton, CensusBulkPDFButton } from "@/pdf/Census2027PDF";
 const createDownloadLink = (myData, fileName) => {
   const json = JSON.stringify(myData, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -528,8 +529,9 @@ export default function MyDataPage() {
                   );
                 }}
               >
-                Download Data
+                Download JSON Data
               </button>
+              <CensusBulkPDFButton records={filteredRecords} />
               <button
                 type="button"
                 onClick={() => router.push("/census-2027")}
@@ -837,6 +839,7 @@ function RecordRow({ record, onView, onEdit, onDelete, formatDate }) {
           >
             Delete
           </button>
+          <CensusPDFButton data={record} />
         </div>
       </td>
     </tr>
@@ -899,6 +902,7 @@ function RecordCard({ record, onView, onEdit, onDelete, formatDate }) {
           >
             Delete
           </button>
+          <CensusPDFButton data={record} />
         </div>
       </div>
     </div>
@@ -1147,6 +1151,7 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
         >
           Delete
         </button>
+        <CensusPDFButton data={record} />
       </div>
     </ModalShell>
   );

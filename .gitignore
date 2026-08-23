@@ -48,7 +48,7 @@ upload.bat
 databases
 files
 test.js
-sample.txt
+sample.*
 server.js
 /db
 /files
