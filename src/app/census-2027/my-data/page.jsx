@@ -678,14 +678,19 @@ export default function MyDataPage() {
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                      <th className="px-4 py-3">Household</th>
-                      <th className="px-4 py-3">Building / Census</th>
-                      <th className="px-4 py-3">Head of Household</th>
-                      <th className="px-4 py-3">Location</th>
-                      <th className="px-4 py-3">Members</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Submitted</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3 text-center">Household</th>
+                      <th className="px-4 py-3 text-center">
+                        Building / Census
+                      </th>
+                      <th className="px-4 py-3 text-center">
+                        Head of Household
+                      </th>
+                      <th className="px-4 py-3 text-center">Mobile No.</th>
+                      {/* <th className="px-4 py-3">Location</th> */}
+                      <th className="px-4 py-3 text-center">Members</th>
+                      {/* <th className="px-4 py-3">Status</th> */}
+                      <th className="px-4 py-3 text-center">Submitted</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
                     </tr>
                   </thead>
 
@@ -787,15 +792,18 @@ function RecordRow({ record, onView, onEdit, onDelete, formatDate }) {
         <p className="text-sm font-bold text-gray-800">
           {record.headName || "—"}
         </p>
-        {record.headMobile && (
+        {/* {record.headMobile && (
           <p className="mt-0.5 text-xs text-gray-500">{record.headMobile}</p>
-        )}
+        )} */}
+      </td>
+      <td className="px-4 py-4">
+        {record.headMobile && <PhoneLink value={record.headMobile} />}
       </td>
 
-      <td className="px-4 py-4">
+      {/* <td className="px-4 py-4">
         <p className="text-sm text-gray-700">{record.village || "—"}</p>
         <p className="mt-0.5 text-xs text-gray-500">{record.district || ""}</p>
-      </td>
+      </td> */}
 
       <td className="px-4 py-4">
         <p className="text-sm font-bold text-gray-800">
@@ -803,9 +811,9 @@ function RecordRow({ record, onView, onEdit, onDelete, formatDate }) {
         </p>
       </td>
 
-      <td className="px-4 py-4">
+      {/* <td className="px-4 py-4">
         <StatusBadge status={record.status} />
-      </td>
+      </td> */}
 
       <td className="whitespace-nowrap px-4 py-4 text-xs text-gray-500">
         {formatDate(record.submittedAt)}
@@ -867,8 +875,8 @@ function RecordCard({ record, onView, onEdit, onDelete, formatDate }) {
           <MiniInfo label="Members" value={record.householdMembers} />
           <MiniInfo label="Building No." value={record.buildingNo} />
           <MiniInfo label="Census No." value={record.censusNo} />
+          <PhoneInfo label="Mobile No." value={record.headMobile} />
           <MiniInfo label="Village" value={record.village} />
-          <MiniInfo label="Status" value={record.status} />
         </div>
 
         <div className="rounded-lg bg-gray-50 p-3">
@@ -920,6 +928,32 @@ function MiniInfo({ label, value }) {
   );
 }
 
+function PhoneInfo({ label, value }) {
+  if (!value) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-gray-400">{label}</p>
+      <PhoneLink value={value} />
+    </div>
+  );
+}
+
+function PhoneLink({ value }) {
+  if (!value) return null;
+
+  const phoneNumber = String(value).replace(/[^\d+]/g, "");
+
+  return (
+    <a
+      href={`tel:${phoneNumber}`}
+      className="mt-0.5 block text-sm font-semibold text-green-700 hover:text-green-800 hover:underline"
+    >
+      {value}
+    </a>
+  );
+}
+
 function StatusBadge({ status }) {
   const normalized = status || "unknown";
   let classes = "bg-gray-100 text-gray-600";
@@ -966,6 +1000,7 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
         // ["Status", record.status],
         ["Building No.", record.buildingNo],
         ["Census No.", record.censusNo],
+        ["Mobile No.", record.mobileNo],
       ],
     },
     // {
@@ -1092,11 +1127,15 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                       {label}
                     </p>
-                    <p className="mt-1 break-words text-sm font-semibold text-gray-700">
-                      {value === null || value === undefined || value === ""
-                        ? "—"
-                        : String(value)}
-                    </p>
+                    {label.includes("Mobile") ? (
+                      <PhoneLink value={value} />
+                    ) : (
+                      <p className="mt-1 break-words text-sm font-semibold text-gray-700">
+                        {value === null || value === undefined || value === ""
+                          ? "—"
+                          : String(value)}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
