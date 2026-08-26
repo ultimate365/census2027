@@ -33,6 +33,27 @@ const createDownloadLink = (myData, fileName) => {
   document.body.removeChild(link);
   URL.revokeObjectURL(href);
 };
+function sortByBuildingNo(data) {
+  return [...data].sort((first, second) => {
+    const firstBuildingNo = first.buildingNo ?? "";
+    const secondBuildingNo = second.buildingNo ?? "";
+    const firstNumber = Number(
+      firstBuildingNo.match(/\d+/)?.[0] ?? Number.POSITIVE_INFINITY,
+    );
+    const secondNumber = Number(
+      secondBuildingNo.match(/\d+/)?.[0] ?? Number.POSITIVE_INFINITY,
+    );
+
+    if (firstNumber !== secondNumber) {
+      return firstNumber - secondNumber;
+    }
+
+    return firstBuildingNo.localeCompare(secondBuildingNo, undefined, {
+      numeric: true,
+    });
+  });
+}
+
 const editSelectOptions = {
   selfEnumeration: ["হ্যাঁ", "না"],
   floorMaterial: [
@@ -229,6 +250,7 @@ export default function MyDataPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [villageFilter, setVillageFilter] = useState("all");
+  const [sortByBuilding, setSortByBuilding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -318,6 +340,12 @@ export default function MyDataPage() {
       return matchesSearch && matchesStatus && matchesVillage;
     });
   }, [records, search, statusFilter, villageFilter]);
+
+  const displayedRecords = useMemo(
+    () =>
+      sortByBuilding ? sortByBuildingNo(filteredRecords) : filteredRecords,
+    [filteredRecords, sortByBuilding],
+  );
 
   const formatDate = (value) => {
     if (!value) return "—";
@@ -524,14 +552,37 @@ export default function MyDataPage() {
                 className="rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-orange-600"
                 onClick={() => {
                   createDownloadLink(
-                    filteredRecords,
+                    displayedRecords,
                     user?.email?.split("@")[0] || "Enumerator",
                   );
                 }}
               >
                 Download JSON Data
               </button>
-              <CensusBulkPDFButton records={filteredRecords} />
+              <CensusBulkPDFButton records={displayedRecords} />
+              <button
+                type="button"
+                onClick={() => setSortByBuilding((current) => !current)}
+                className={`rounded-lg px-4 py-2.5 text-sm font-bold shadow transition ${
+                  sortByBuilding
+                    ? "bg-yellow-300 text-green-950 hover:bg-yellow-200"
+                    : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                {sortByBuilding ? "Building Order On" : "Sort by Building No."}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortByBuilding(false)}
+                disabled={!sortByBuilding}
+                className={`rounded-lg px-4 py-2.5 text-sm font-bold shadow transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  !sortByBuilding
+                    ? "bg-yellow-300 text-green-950"
+                    : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                Submitted Time Order
+              </button>
               <button
                 type="button"
                 onClick={() => router.push("/census-2027")}
@@ -695,7 +746,7 @@ export default function MyDataPage() {
                   </thead>
 
                   <tbody>
-                    {filteredRecords.map((record) => (
+                    {displayedRecords.map((record) => (
                       <RecordRow
                         key={record.id}
                         record={record}
@@ -711,7 +762,7 @@ export default function MyDataPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:hidden">
-              {filteredRecords.map((record) => (
+              {displayedRecords.map((record) => (
                 <RecordCard
                   key={record.id}
                   record={record}
