@@ -158,6 +158,7 @@ export default function Census2027Page() {
     buildingNo: "CN",
     censusNo: "",
     headName: "",
+    headSex: "পুরুষ",
     headMobile: "",
     selfEnumeration: "না",
     selfEnumerationID: "",
@@ -826,6 +827,8 @@ export default function Census2027Page() {
 
         headName: form.headName,
 
+        headSex: form.headSex,
+
         headMobile: form.headMobile,
 
         selfEnumeration: form.selfEnumeration,
@@ -1266,6 +1269,15 @@ export default function Census2027Page() {
                 onChange={handleChange}
                 required={requiredForHousehold}
                 placeholder="গৃহপ্রধানের পূর্ণ নাম"
+              />
+
+              <Select
+                label="গৃহপ্রধানের লিঙ্গ"
+                name="headSex"
+                form={form}
+                onChange={handleChange}
+                options={["পুরুষ", "মহিলা", "অন্যান্য"]}
+                required={requiredForHousehold}
               />
 
               <Input

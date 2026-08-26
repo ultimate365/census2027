@@ -127,6 +127,7 @@ const editSelectOptions = {
     "খালি",
   ],
   houseCondition: ["ভালো", "বাসযোগ্য", "ক্ষতিগ্রস্ত"],
+  headSex: ["পুরুষ", "মহিলা", "অন্যান্য"],
   caste: ["তপশিলি জাতি", "তপশিলি উপজাতি", "অন্যান্য"],
   houseOwnership: [
     "নিজের",
@@ -867,6 +868,9 @@ function RecordRow({ record, onView, onEdit, onDelete, formatDate }) {
         <p className="text-sm font-bold text-gray-800">
           {record.headName || "—"}
         </p>
+        <p className="mt-0.5 text-xs text-gray-500">
+          লিঙ্গ: {record.headSex || "—"}
+        </p>
         {/* {record.headMobile && (
           <p className="mt-0.5 text-xs text-gray-500">{record.headMobile}</p>
         )} */}
@@ -947,6 +951,7 @@ function RecordCard({ record, onView, onEdit, onDelete, formatDate }) {
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-3">
           <MiniInfo label="Head Name" value={record.headName} />
+          <MiniInfo label="Head Sex" value={record.headSex} />
           <MiniInfo label="Members" value={record.householdMembers} />
           <MiniInfo label="Building No." value={record.buildingNo} />
           <MiniInfo label="Census No." value={record.censusNo} />
@@ -1107,6 +1112,7 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
       title: "Household",
       fields: [
         ["Head Name", record.headName],
+        ["Head Sex", record.headSex],
         ["Head Mobile", record.headMobile],
         ["Self Enumeration", record.selfEnumeration],
         ["Self Enumeration ID", record.selfEnumerationID],
@@ -1403,6 +1409,13 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                 name="headName"
                 value={record.headName}
                 onChange={onChange}
+              />
+              <EditSelect
+                label="Head Sex"
+                name="headSex"
+                value={record.headSex}
+                onChange={onChange}
+                options={editSelectOptions.headSex}
               />
               <EditInput
                 label="Head Mobile"

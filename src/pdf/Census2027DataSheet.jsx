@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 
+import providedRecords from "../../files/census2027.json";
+
 import {
   Document,
   Page,
@@ -13,7 +15,7 @@ import {
 } from "@react-pdf/renderer";
 
 /* ============================================================
-   BENGALI FONT
+   FONT
    ============================================================ */
 
 Font.register({
@@ -31,14 +33,20 @@ Font.register({
 });
 
 /* ============================================================
-   CODE MAPPINGS
+   NORMALIZE VALUE
    ============================================================ */
 
-const normalize = (v) =>
-  String(v ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+function normalize(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/* ============================================================
+   GET CODE
+   ============================================================ */
 
 function getCode(value, map) {
   if (value === null || value === undefined || value === "") {
@@ -46,27 +54,47 @@ function getCode(value, map) {
   }
 
   const text = normalize(value);
+  const asciiText = text.replace(/[০-৯]/g, (digit) =>
+    "০১২৩৪৫৬৭৮৯".indexOf(digit),
+  );
 
-  /* Already a code */
-  if (/^\d+$/.test(text)) {
-    return text;
+  /*
+   * If Firestore already stores a number/code,
+   * use it directly.
+   */
+  if (/^\d+$/.test(asciiText)) {
+    return asciiText;
   }
 
+  /*
+   * Exact match
+   */
   if (map[text] !== undefined) {
     return String(map[text]);
   }
 
+  /*
+   * Partial match
+   */
   for (const [key, code] of Object.entries(map)) {
-    if (text.includes(key)) {
+    if (text.includes(key) || key.includes(text)) {
       return String(code);
     }
   }
+
+  /*
+   * Do not silently hide unmatched values
+   */
+  console.warn("Census PDF: code not found", {
+    value,
+    normalized: text,
+  });
 
   return "";
 }
 
 /* ============================================================
-   Q4 FLOOR
+   Q4 - FLOOR MATERIAL
    ============================================================ */
 
 const FLOOR_CODES = {
@@ -76,6 +104,7 @@ const FLOOR_CODES = {
   কাঠ: 2,
   বাঁশ: 2,
   wood: 2,
+  "wood/bamboo": 2,
 
   "পোড়া ইট": 3,
   "পোড়া ইট": 3,
@@ -90,13 +119,14 @@ const FLOOR_CODES = {
   মোজাইক: 6,
   "ফ্লোর টাইলস": 6,
   "মোজাইক/ফ্লোর টাইলস": 6,
+  "mosaic/floor tiles": 6,
 
   অন্যান্য: 7,
   other: 7,
 };
 
 /* ============================================================
-   Q5 WALL
+   Q5 - WALL MATERIAL
    ============================================================ */
 
 const WALL_CODES = {
@@ -104,34 +134,44 @@ const WALL_CODES = {
   খড়: 1,
   খড়: 1,
   বাঁশ: 1,
+  "grass/thatch/bamboo": 1,
 
   প্লাস্টিক: 2,
   পলিথিন: 2,
+  "plastic/polythene": 2,
 
   মাটি: 3,
   "কাঁচা ইট": 3,
+  "mud/unburnt brick": 3,
 
   কাঠ: 4,
+  wood: 4,
 
   পাথর: 5,
+  stone: 5,
 
   "পাথর পাকা": 6,
+  "stone with mortar": 6,
 
   জিআই: 7,
   "জি আই": 7,
   মেটাল: 7,
   অ্যাসবেস্টস: 7,
+  "gi/metal/asbestos": 7,
 
   "পোড়া ইট": 8,
   "পোড়া ইট": 8,
+  "burnt brick": 8,
 
   কংক্রিট: 9,
+  concrete: 9,
 
   অন্যান্য: 0,
+  other: 0,
 };
 
 /* ============================================================
-   Q6 ROOF
+   Q6 - ROOF MATERIAL
    ============================================================ */
 
 const ROOF_CODES = {
@@ -169,7 +209,7 @@ const ROOF_CODES = {
 };
 
 /* ============================================================
-   Q7 HOUSE USE
+   Q7 - HOUSE USE
    ============================================================ */
 
 const HOUSE_USE_CODES = {
@@ -180,8 +220,10 @@ const HOUSE_USE_CODES = {
   "বাসগৃহ সহ অন্যান্য ব্যবহার": 2,
 
   "দোকান/অফিস": 3,
+  "shop/office": 3,
 
   "স্কুল/কলেজ": 4,
+  "school/college": 4,
 
   হোটেল: 5,
   লজ: 5,
@@ -200,12 +242,14 @@ const HOUSE_USE_CODES = {
   উপাসনালয়: 8,
 
   অন্যান্য: 9,
+  other: 9,
 
   খালি: 0,
+  vacant: 0,
 };
 
 /* ============================================================
-   Q8 CONDITION
+   Q8 - HOUSE CONDITION
    ============================================================ */
 
 const CONDITION_CODES = {
@@ -218,35 +262,45 @@ const CONDITION_CODES = {
   জীর্ণ: 3,
   জীর্ণশীর্ণ: 3,
   ভগ্ন: 3,
+  dilapidated: 3,
 };
 
 /* ============================================================
-   Q12 SEX
+   Q12 - SEX OF HEAD
    ============================================================ */
 
 const SEX_CODES = {
   পুরুষ: 1,
+  "পুরুষ সদস্য": 1,
   male: 1,
 
   মহিলা: 2,
   নারী: 2,
+  "মহিলা সদস্য": 2,
   female: 2,
 
+  অন্যান্য: 3,
+  "অন্যান্য/তৃতীয় লিঙ্গ": 3,
+  "অন্যান্য/তৃতীয় লিঙ্গ": 3,
   "তৃতীয় লিঙ্গ": 3,
   "তৃতীয় লিঙ্গ": 3,
+  "তৃতীয় লিঙ্গের ব্যক্তি": 3,
+  "third gender": 3,
   transgender: 3,
 };
 
 /* ============================================================
-   Q13 CASTE
+   Q13 - CASTE
    ============================================================ */
 
 const CASTE_CODES = {
   "তপশিলি জাতি": 1,
+  "তফশিলি জাতি": 1,
   sc: 1,
   এসসি: 1,
 
   "তপশিলি উপজাতি": 2,
+  "তফশিলি উপজাতি": 2,
   st: 2,
   এসটি: 2,
 
@@ -255,7 +309,7 @@ const CASTE_CODES = {
 };
 
 /* ============================================================
-   Q14 OWNERSHIP
+   Q14 - HOUSE OWNERSHIP
    ============================================================ */
 
 const OWNERSHIP_CODES = {
@@ -270,21 +324,24 @@ const OWNERSHIP_CODES = {
   "ভাড়া, বাড়ি নেই": 3,
 
   অন্যান্য: 4,
+  other: 4,
 };
 
 /* ============================================================
-   Q17 WATER SOURCE
+   Q17 - DRINKING WATER SOURCE
    ============================================================ */
 
 const WATER_CODES = {
   "পরিশুদ্ধ কলের জল": 1,
   "পরিশোধিত কলের জল": 1,
+  "পরিশুদ্ধ নলকূপের জল": 1,
 
   "অ-পরিশুদ্ধ কলের জল": 2,
   "অপরিশুদ্ধ কলের জল": 2,
 
   কুয়ো: 3,
   কুয়ো: 3,
+  well: 3,
 
   "হ্যান্ড পাম্প": 4,
   হ্যান্ডপাম্প: 4,
@@ -295,36 +352,58 @@ const WATER_CODES = {
   বোরওয়েল: 5,
 
   ঝরনা: 6,
+  spring: 6,
 
   নদী: 7,
   খাল: 7,
+  river: 7,
 
   পুকুর: 8,
   ট্যাংক: 8,
   হ্রদ: 8,
+  pond: 8,
 
   "বোতলজাত জল": 9,
   "প্যাকেট জল": 9,
 
   অন্যান্য: 0,
+  other: 0,
 };
 
 /* ============================================================
-   Q18 WATER LOCATION
+   Q18 - WATER LOCATION
    ============================================================ */
 
 const WATER_LOCATION_CODES = {
+  "বাড়ির চৌহদ্দির মধ্যে": 1,
+  "বাড়ির চৌহদ্দির মধ্যে": 1,
+
   "বাড়ির মধ্যে": 1,
   "বাড়ির মধ্যে": 1,
+
+  "বাড়ির ভিতরে": 1,
+  "বাড়ির ভিতরে": 1,
+
+  "বাড়ির চৌহদ্দির ভেতরে": 1,
+  "বাড়ির চৌহদ্দির ভেতরে": 1,
+
+  "within premises": 1,
+
+  "বাড়ির চৌহদ্দির কাছে": 2,
+  "বাড়ির চৌহদ্দির কাছে": 2,
 
   "বাড়ির কাছে": 2,
   "বাড়ির কাছে": 2,
 
+  "near premises": 2,
+
   দূরে: 3,
+  দূরবর্তী: 3,
+  away: 3,
 };
 
 /* ============================================================
-   Q19 LIGHTING
+   Q19 - LIGHTING
    ============================================================ */
 
 const LIGHTING_CODES = {
@@ -332,117 +411,281 @@ const LIGHTING_CODES = {
   electricity: 1,
 
   কেরোসিন: 2,
+  kerosene: 2,
 
   সৌরবিদ্যুৎ: 3,
   সৌর: 3,
+  solar: 3,
 
   "অন্যান্য তেল": 4,
 
   অন্যান্য: 5,
+  other: 5,
 
   "আলো নেই": 6,
+  "কোনও আলো নেই": 6,
+  "কোনো আলো নেই": 6,
 };
 
 /* ============================================================
-   Q20 LATRINE ACCESS
+   Q20 - LATRINE AVAILABILITY
    ============================================================ */
 
 const LATRINE_ACCESS_CODES = {
   একক: 1,
   নিজস্ব: 1,
   "শুধু পরিবারের": 1,
+  exclusive: 1,
 
   যৌথ: 2,
+  shared: 2,
 
   সর্বসাধারণের: 3,
+  সর্বসাধারণ: 3,
+  public: 3,
 
   খোলা: 4,
+  "খোলা স্থানে": 4,
+  open: 4,
 };
 
 /* ============================================================
-   Q21 LATRINE TYPE
+   Q21 - LATRINE TYPE
    ============================================================ */
 
 const LATRINE_TYPE_CODES = {
   "ফ্লাশ-নর্দমা": 1,
+  "ফ্লাশ নর্দমা": 1,
+  "ফ্লাশ টু নর্দমা": 1,
+  "flush-sewer": 1,
+  "flush to sewer": 1,
 
   "ফ্লাশ-সেপটিক": 2,
+  "ফ্লাশ সেপটিক": 2,
+  "ফ্লাশ টু সেপটিক": 2,
+  "flush-septic": 2,
+  "flush to septic tank": 2,
 
   "ফ্লাশ-অন্যান্য": 3,
+  "ফ্লাশ অন্যান্য": 3,
+  "flush-other": 3,
 
-  "জোড়া পিট-স্ল্যাব": 4,
-  "জোড়া পিট-স্ল্যাব": 4,
+  "জোড়া কুয়ো/পিট স্ল্যাবযুক্ত": 4,
+  "জোড়া কুয়ো/পিট স্ল্যাবযুক্ত": 4,
+  "জোড়া পিট স্ল্যাব": 4,
+  "জোড়া পিট স্ল্যাব": 4,
+  "twin pit slab": 4,
+  "দুটি কুয়ো/পিটযুক্ত": 4,
+  "দুটি কুয়ো/পিটযুক্ত": 4,
 
-  "জোড়া পিট-খোলা": 5,
-  "জোড়া পিট-খোলা": 5,
+  "জোড়া কুয়ো/পিট খোলা": 5,
+  "জোড়া কুয়ো/পিট খোলা": 5,
+  "জোড়া পিট খোলা": 5,
+  "জোড়া পিট খোলা": 5,
+  "twin pit open": 5,
 
+  "একক কুয়ো/পিট স্ল্যাবযুক্ত": 6,
+  "একক কুয়ো/পিট স্ল্যাবযুক্ত": 6,
+  "একক পিট স্ল্যাব": 6,
   "একক পিট-স্ল্যাব": 6,
+  "single pit slab": 6,
 
+  "একক কুয়ো/পিট খোলা": 7,
+  "একক কুয়ো/পিট খোলা": 7,
+  "একক পিট খোলা": 7,
   "একক পিট-খোলা": 7,
+  "single pit open": 7,
 
   "মানুষ দ্বারা পরিষ্কার": 8,
+  "মানুষ দ্বারা পরিষ্কার করা": 8,
+  "serviced by human": 8,
 
   "পশু দ্বারা পরিষ্কার": 9,
+  "পশু দ্বারা পরিষ্কার করা": 9,
+  "serviced by animal": 9,
 
   "খোলা নর্দমা": 0,
 };
 
 /* ============================================================
-   Q22 WASTE WATER
+   Q22 - WASTE WATER DRAIN
    ============================================================ */
 
 const WASTE_WATER_CODES = {
+  "ঢাকা নর্দমা": 1,
+  "ঢাকা নালা": 1,
   "বন্ধ নর্দমা": 1,
+  "আচ্ছাদিত নর্দমা": 1,
+  "covered drain": 1,
+  "closed drain": 1,
 
   "খোলা নর্দমা": 2,
+  "খোলা নালা": 2,
+  "open drain": 2,
 
+  "কোন নর্দমা নেই": 3,
   "কোনও নর্দমা নেই": 3,
   "কোনো নর্দমা নেই": 3,
+  "নর্দমা নেই": 3,
+  "no drain": 3,
+  "no drainage": 3,
 };
 
 /* ============================================================
-   Q23 BATHING
+   Q23 - BATHING
    ============================================================ */
 
 const BATHING_CODES = {
   বাথরুম: 1,
+  স্নানঘর: 1,
+  "স্নানের ঘর": 1,
+  bathroom: 1,
 
   "ছাদহীন ঘেরা স্থান": 2,
+  "ছাদবিহীন ঘেরা স্থান": 2,
+  "enclosure without roof": 2,
 
   নেই: 3,
+  "নেই / ব্যবস্থা নেই": 3,
+  "not available": 3,
 };
 
 /* ============================================================
-   Q24 KITCHEN / GAS
+   Q24 - KITCHEN / LPG
    ============================================================ */
 
 const KITCHEN_CODES = {
-  "রান্নাঘর + গ্যাস": 1,
+  "রান্নাঘরে রান্না হয়, LPG/CNG সংযোগ আছে": 1,
+  "রান্নাঘরে রান্না হয়, LPG/CNG সংযোগ আছে": 1,
   "রান্নাঘর এবং গ্যাস": 1,
+  "রান্নাঘর + গ্যাস": 1,
 
+  "রান্নাঘরে রান্না হয়, LPG/CNG সংযোগ নেই": 2,
+  "রান্নাঘরে রান্না হয়, LPG/CNG সংযোগ নেই": 2,
   "রান্নাঘর, গ্যাস নেই": 2,
 
+  "বাড়ির ভিতরে রান্না হয়, LPG/CNG সংযোগ আছে": 3,
+  "বাড়ির ভিতরে রান্না হয়, LPG/CNG সংযোগ আছে": 3,
   "ঘরের ভিতর + গ্যাস": 3,
 
+  "বাড়ির ভিতরে রান্না হয়, LPG/CNG সংযোগ নেই": 4,
+  "বাড়ির ভিতরে রান্না হয়, LPG/CNG সংযোগ নেই": 4,
   "ঘরের ভিতর, গ্যাস নেই": 4,
 
+  "বাইরে রান্না হয়, LPG/CNG সংযোগ আছে": 5,
+  "বাইরে রান্না হয়, LPG/CNG সংযোগ আছে": 5,
   "বাইরে + গ্যাস": 5,
 
+  "বাইরে রান্না হয়, LPG/CNG সংযোগ নেই": 6,
+  "বাইরে রান্না হয়, LPG/CNG সংযোগ নেই": 6,
   "বাইরে, গ্যাস নেই": 6,
 
   "রান্না হয় না": 7,
   "রান্না হয় না": 7,
+  "no cooking": 7,
 };
 
+/*
+ * Q24 can also be stored in Firestore as separate fields.
+ */
+function getKitchenCode(record) {
+  const direct =
+    record.cookingArrangement ??
+    record.kitchenArrangement ??
+    record.kitchenType;
+
+  if (direct) {
+    const code = getCode(direct, KITCHEN_CODES);
+
+    if (code !== "") {
+      return code;
+    }
+  }
+
+  const kitchen = normalize(record.kitchen ?? record.kitchenAvailability ?? "");
+
+  const gas = normalize(record.cookingGas ?? record.lpgCng ?? "");
+  const fuel = normalize(record.cookingFuel ?? record.fuel ?? "");
+
+  const hasKitchen =
+    kitchen.includes("রান্নাঘর") || kitchen.includes("kitchen");
+
+  const inside =
+    kitchen.includes("ঘরের ভিতর") ||
+    kitchen.includes("বাড়ির ভিতর") ||
+    kitchen.includes("বাড়ির ভিতর") ||
+    kitchen.includes("inside");
+
+  const outside = kitchen.includes("বাইরে") || kitchen.includes("outside");
+
+  const hasGas =
+    gas === "হ্যাঁ" ||
+    gas === "yes" ||
+    gas === "lpg" ||
+    gas === "lpg/cng" ||
+    gas.includes("lpg") ||
+    gas.includes("cng") ||
+    fuel.includes("lpg") ||
+    fuel.includes("cng") ||
+    fuel.includes("রান্নার গ্যাস");
+
+  const noGas =
+    gas === "না" ||
+    gas === "no" ||
+    gas.includes("সংযোগ নেই") ||
+    gas.includes("connection not") ||
+    (!hasGas && fuel !== "");
+
+  if (gas.includes("রান্না হয় না") || gas.includes("রান্না হয় না")) {
+    return "7";
+  }
+
+  if (hasKitchen && hasGas) {
+    return "1";
+  }
+
+  if (hasKitchen && noGas) {
+    return "2";
+  }
+
+  if (inside && hasGas) {
+    return "3";
+  }
+
+  if (inside && noGas) {
+    return "4";
+  }
+
+  if (outside && hasGas) {
+    return "5";
+  }
+
+  if (outside && noGas) {
+    return "6";
+  }
+
+  if (hasGas) {
+    return "1";
+  }
+
+  if (noGas) {
+    return "2";
+  }
+
+  return "";
+}
+
 /* ============================================================
-   Q25 FUEL
+   Q25 - COOKING FUEL
    ============================================================ */
 
 const FUEL_CODES = {
   "জ্বালানি কাঠ": 1,
   কাঠ: 1,
+  firewood: 1,
 
   "ফসলের অবশিষ্টাংশ": 2,
+  "ফসলের বর্জ্য": 2,
 
   "গোবরের ঘুঁটে": 3,
   গোবর: 3,
@@ -456,20 +699,26 @@ const FUEL_CODES = {
   "রান্নার গ্যাস": 6,
   এলপিজি: 6,
   "এলপিজি/পিএনজি": 6,
+  lpg: 6,
+  "lpg/png": 6,
 
   বিদ্যুৎ: 7,
+  electricity: 7,
 
   বায়োগ্যাস: 8,
   বায়োগ্যাস: 8,
+  biogas: 8,
 
   "সৌর শক্তি": 9,
   সৌরশক্তি: 9,
+  solar: 9,
 
   অন্যান্য: 0,
+  other: 0,
 };
 
 /* ============================================================
-   Q26 RADIO
+   Q26 - RADIO
    ============================================================ */
 
 const RADIO_CODES = {
@@ -485,40 +734,50 @@ const RADIO_CODES = {
 };
 
 /* ============================================================
-   Q27 TV
+   Q27 - TELEVISION
    ============================================================ */
 
 const TV_CODES = {
   "ডিডি ফ্রি ডিশ": 1,
+  "dd free dish": 1,
 
   "অন্যান্য ডিটিএইচ": 2,
+  "অন্যান্য dth": 2,
+  dth: 2,
 
   কেবল: 3,
+  cable: 3,
 
   অন্যান্য: 4,
+  other: 4,
 
   নেই: 5,
+  no: 5,
 };
 
 /* ============================================================
-   Q28 INTERNET
+   Q28 - INTERNET
    ============================================================ */
 
 const INTERNET_CODES = {
   ল্যাপটপ: 1,
   কম্পিউটার: 1,
   "ল্যাপটপ/কম্পিউটার": 1,
+  computer: 1,
 
   মোবাইল: 2,
   স্মার্টফোন: 2,
+  smartphone: 2,
+  mobile: 2,
 
   "অন্যান্য ডিভাইস": 3,
 
   নেই: 4,
+  no: 4,
 };
 
 /* ============================================================
-   Q29 LAPTOP
+   Q29 - LAPTOP / COMPUTER
    ============================================================ */
 
 const LAPTOP_CODES = {
@@ -530,42 +789,53 @@ const LAPTOP_CODES = {
 };
 
 /* ============================================================
-   Q30 MOBILE
+   Q30 - MOBILE / TELEPHONE
    ============================================================ */
 
 const MOBILE_CODES = {
   ল্যান্ডলাইন: 1,
+  landline: 1,
 
   স্মার্টফোন: 2,
+  smartphone: 2,
 
   "সাধারণ মোবাইল": 3,
   "বেসিক মোবাইল": 3,
+  "ফিচার ফোন": 3,
 
   উভয়: 4,
   উভয়: 4,
+  both: 4,
 
   নেই: 5,
+  no: 5,
 };
 
 /* ============================================================
-   Q31 TWO WHEELER
+   Q31 - BICYCLE / TWO WHEELER
    ============================================================ */
 
 const TWO_WHEELER_CODES = {
   সাইকেল: 1,
+  bicycle: 1,
 
   স্কুটার: 2,
   মোটরসাইকেল: 2,
   মোপেড: 2,
+  scooter: 2,
+  motorcycle: 2,
+  moped: 2,
 
   উভয়: 3,
   উভয়: 3,
+  both: 3,
 
   নেই: 4,
+  none: 4,
 };
 
 /* ============================================================
-   Q32 CAR
+   Q32 - CAR / VAN
    ============================================================ */
 
 const CAR_CODES = {
@@ -577,383 +847,447 @@ const CAR_CODES = {
 };
 
 /* ============================================================
-   Q33 FOOD GRAIN
+   Q33 - MAIN FOOD GRAIN
    ============================================================ */
 
 const GRAIN_CODES = {
   চাল: 1,
+  ধান: 1,
   ভাত: 1,
+  rice: 1,
 
   গম: 2,
+  wheat: 2,
 
   জোয়ার: 3,
   জোয়ার: 3,
+  jowar: 3,
 
   বাজরা: 4,
+  bajra: 4,
 
   ভুট্টা: 5,
+  মকাই: 5,
+  maize: 5,
+  corn: 5,
 
   অন্যান্য: 6,
+  other: 6,
 };
 
 /* ============================================================
    COLUMN DEFINITIONS
-
-   These are deliberately compact so all 34 columns fit
-   across A4 landscape.
-
-   Q11 and Q34 are wider because they contain text/mobile.
    ============================================================ */
 
 const columns = [
-  { id: 1, label: "লাইন\nনম্বর", w: 4.0 },
-  { id: 2, label: "বাড়ির\nনম্বর", w: 3.5 },
-  { id: 3, label: "সেন্সাস\nঘর নম্বর", w: 4.0 },
+  {
+    id: 1,
+    label: "লাইন\nনম্বর",
+    w: 4.0,
+  },
 
-  { id: 4, label: "মেঝে", w: 2.3 },
-  { id: 5, label: "দেওয়াল", w: 2.3 },
-  { id: 6, label: "ছাদ", w: 2.3 },
+  {
+    id: 2,
+    label: "বাড়ির\nনম্বর",
+    w: 3.5,
+  },
 
-  { id: 7, label: "ঘরের\nব্যবহার", w: 3.8 },
+  {
+    id: 3,
+    label: "সেন্সাস\nঘর নম্বর",
+    w: 4.0,
+  },
 
-  { id: 8, label: "অবস্থা", w: 2.4 },
+  {
+    id: 4,
+    label: "মেঝে",
+    w: 2.3,
+  },
 
-  { id: 9, label: "পরিবারের\nসংখ্যা", w: 3.2 },
+  {
+    id: 5,
+    label: "দেওয়াল",
+    w: 2.3,
+  },
 
-  { id: 10, label: "সদস্য\nসংখ্যা", w: 3.0 },
+  {
+    id: 6,
+    label: "ছাদ",
+    w: 2.3,
+  },
 
-  { id: 11, label: "গৃহপ্রধানের নাম", w: 8.0 },
+  {
+    id: 7,
+    label: "ঘরের\nব্যবহার",
+    w: 3.8,
+  },
 
-  { id: 12, label: "লিঙ্গ", w: 2.3 },
-  { id: 13, label: "জাতি", w: 2.3 },
-  { id: 14, label: "মালিকানা", w: 3.0 },
-  { id: 15, label: "ঘর\nসংখ্যা", w: 2.5 },
-  { id: 16, label: "বিবাহিত\nদম্পতি", w: 3.0 },
+  {
+    id: 8,
+    label: "অবস্থা",
+    w: 2.4,
+  },
 
-  { id: 17, label: "পানীয় জলের\nউৎস", w: 3.4 },
-  { id: 18, label: "জলের\nঅবস্থান", w: 3.0 },
-  { id: 19, label: "আলোর\nউৎস", w: 2.7 },
-  { id: 20, label: "শৌচালয়\nব্যবস্থা", w: 3.0 },
-  { id: 21, label: "শৌচালয়ের\nধরন", w: 3.0 },
-  { id: 22, label: "বর্জ্য জল", w: 2.7 },
-  { id: 23, label: "স্নানের\nব্যবস্থা", w: 2.8 },
-  { id: 24, label: "রান্নার\nব্যবস্থা", w: 3.0 },
-  { id: 25, label: "প্রধান\nজ্বালানি", w: 3.0 },
+  {
+    id: 9,
+    label: "পরিবারের\nসংখ্যা",
+    w: 3.2,
+  },
 
-  { id: 26, label: "রেডিও", w: 2.5 },
-  { id: 27, label: "টিভি", w: 2.5 },
-  { id: 28, label: "ইন্টারনেট", w: 2.7 },
-  { id: 29, label: "ল্যাপটপ", w: 2.5 },
-  { id: 30, label: "মোবাইল/\nটেলিফোন", w: 3.0 },
-  { id: 31, label: "সাইকেল/\nদুই-চাকা", w: 3.0 },
-  { id: 32, label: "চার-চাকা", w: 2.5 },
-  { id: 33, label: "প্রধান\nখাদ্যশস্য", w: 2.8 },
+  {
+    id: 10,
+    label: "সদস্য\nসংখ্যা",
+    w: 3.0,
+  },
 
-  { id: 34, label: "মোবাইল নম্বর", w: 8.0 },
+  {
+    id: 11,
+    label: "গৃহপ্রধানের নাম",
+    w: 8.0,
+  },
+
+  {
+    id: 12,
+    label: "লিঙ্গ",
+    w: 2.3,
+  },
+
+  {
+    id: 13,
+    label: "জাতি",
+    w: 2.3,
+  },
+
+  {
+    id: 14,
+    label: "মালিকানা",
+    w: 3.0,
+  },
+
+  {
+    id: 15,
+    label: "ঘর\nসংখ্যা",
+    w: 2.5,
+  },
+
+  {
+    id: 16,
+    label: "বিবাহিত\nদম্পতি",
+    w: 3.0,
+  },
+
+  {
+    id: 17,
+    label: "পানীয় জলের\nউৎস",
+    w: 3.4,
+  },
+
+  {
+    id: 18,
+    label: "জলের\nঅবস্থান",
+    w: 3.0,
+  },
+
+  {
+    id: 19,
+    label: "আলোর\nউৎস",
+    w: 2.7,
+  },
+
+  {
+    id: 20,
+    label: "শৌচালয়\nব্যবস্থা",
+    w: 3.0,
+  },
+
+  {
+    id: 21,
+    label: "শৌচালয়ের\nধরন",
+    w: 3.0,
+  },
+
+  {
+    id: 22,
+    label: "বর্জ্য জল",
+    w: 2.7,
+  },
+
+  {
+    id: 23,
+    label: "স্নানের\nব্যবস্থা",
+    w: 2.8,
+  },
+
+  {
+    id: 24,
+    label: "রান্নার\nব্যবস্থা",
+    w: 3.0,
+  },
+
+  {
+    id: 25,
+    label: "প্রধান\nজ্বালানি",
+    w: 3.0,
+  },
+
+  {
+    id: 26,
+    label: "রেডিও",
+    w: 2.5,
+  },
+
+  {
+    id: 27,
+    label: "টিভি",
+    w: 2.5,
+  },
+
+  {
+    id: 28,
+    label: "ইন্টারনেট",
+    w: 2.7,
+  },
+
+  {
+    id: 29,
+    label: "ল্যাপটপ",
+    w: 2.5,
+  },
+
+  {
+    id: 30,
+    label: "মোবাইল/\nটেলিফোন",
+    w: 3.0,
+  },
+
+  {
+    id: 31,
+    label: "সাইকেল/\nদুই-চাকা",
+    w: 3.0,
+  },
+
+  {
+    id: 32,
+    label: "চার-চাকা",
+    w: 2.5,
+  },
+
+  {
+    id: 33,
+    label: "প্রধান\nখাদ্যশস্য",
+    w: 2.8,
+  },
+
+  {
+    id: 34,
+    label: "মোবাইল নম্বর",
+    w: 8.0,
+  },
 ];
 
 /* ============================================================
-   TABLE HEADER
+   PREPARE RECORD
    ============================================================ */
 
-function TableHeader() {
-  return (
-    <View style={styles.tableHeader}>
-      {columns.map((column) => (
-        <View
-          key={column.id}
-          style={[
-            styles.headerCell,
-            {
-              width: `${column.w}%`,
-            },
-          ]}
-        >
-          <Text style={styles.questionNo}>{column.id}</Text>
+function prepareRecord(record, globalIndex) {
+  const r = record || {};
 
-          <Text style={styles.headerText}>{column.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/* ============================================================
-   RECORD VALUE PREPARATION
-   ============================================================ */
-
-function prepareRecord(r, globalIndex) {
   return {
+    /*
+     * 1
+     */
     1: r.lineNumber ?? r.lineNo ?? String(globalIndex + 1).padStart(3, "0"),
 
-    2: r.buildingNo ?? "",
+    /*
+     * 2
+     */
+    2: r.buildingNo ?? r.buildingNumber ?? "",
 
-    3: r.censusNo ?? "",
+    /*
+     * 3
+     *
+     * IMPORTANT:
+     * This is NOT a code.
+     * It is the actual Census House Number.
+     */
+    3: r.censusNo ?? r.censusHouseNo ?? r.censusHouseNumber ?? "",
 
-    4: getCode(r.floorMaterial, FLOOR_CODES),
+    /*
+     * 4
+     */
+    4: getCode(r.floorMaterial ?? r.floor, FLOOR_CODES),
 
-    5: getCode(r.wallMaterial, WALL_CODES),
+    /*
+     * 5
+     */
+    5: getCode(r.wallMaterial ?? r.wall, WALL_CODES),
 
-    6: getCode(r.roofMaterial, ROOF_CODES),
+    /*
+     * 6
+     */
+    6: getCode(r.roofMaterial ?? r.roof, ROOF_CODES),
 
-    7: getCode(r.houseUse, HOUSE_USE_CODES),
+    /*
+     * 7
+     */
+    7: getCode(r.houseUse ?? r.houseUsage, HOUSE_USE_CODES),
 
-    8: getCode(r.houseCondition, CONDITION_CODES),
+    /*
+     * 8
+     */
+    8: getCode(r.houseCondition ?? r.condition, CONDITION_CODES),
 
-    9: r.familyCount ?? r.householdCount ?? 1,
+    /*
+     * 9
+     */
+    9: r.familyCount ?? r.householdCount ?? r.numberOfFamilies ?? 1,
 
-    10: r.householdMembers ?? "",
+    /*
+     * 10
+     */
+    10: r.householdMembers ?? r.memberCount ?? r.totalMembers ?? "",
 
-    11: r.headName ?? "",
+    /*
+     * 11
+     */
+    11: r.headName ?? r.householdHeadName ?? "",
 
-    12: getCode(r.headSex ?? r.sex, SEX_CODES),
+    /*
+     * 12
+     */
+    12: getCode(r.headSex ?? r.sex ?? r.gender ?? r.headGender, SEX_CODES),
 
-    13: getCode(r.casteCategory ?? r.caste, CASTE_CODES),
+    /*
+     * 13
+     */
+    13: getCode(r.casteCategory ?? r.caste ?? r.casteType, CASTE_CODES),
 
-    14: getCode(r.houseOwnership, OWNERSHIP_CODES),
+    /*
+     * 14
+     */
+    14: getCode(r.houseOwnership ?? r.ownership, OWNERSHIP_CODES),
 
-    15: r.roomCount ?? "",
+    /*
+     * 15
+     */
+    15: r.roomCount ?? r.rooms ?? "",
 
-    16: r.marriedCouples ?? "",
+    /*
+     * 16
+     */
+    16: r.marriedCouples ?? r.marriedCoupleCount ?? "",
 
-    17: getCode(r.drinkingWaterSource, WATER_CODES),
+    /*
+     * 17
+     */
+    17: getCode(r.drinkingWaterSource ?? r.waterSource, WATER_CODES),
 
-    18: getCode(r.drinkingWaterLocation, WATER_LOCATION_CODES),
-
-    19: getCode(r.lightingSource, LIGHTING_CODES),
-
-    20: getCode(r.latrineAvailability, LATRINE_ACCESS_CODES),
-
-    21: getCode(r.latrineType, LATRINE_TYPE_CODES),
-
-    22: getCode(r.wasteWaterDrain, WASTE_WATER_CODES),
-
-    23: getCode(r.bathingArrangement, BATHING_CODES),
-
-    24: getCode(
-      r.cookingGas ?? r.kitchenLpg ?? r.kitchenAvailability,
-      KITCHEN_CODES,
+    /*
+     * 18
+     */
+    18: getCode(
+      r.drinkingWaterLocation ?? r.waterLocation ?? r.waterAvailabilityLocation,
+      WATER_LOCATION_CODES,
     ),
 
-    25: getCode(r.cookingFuel, FUEL_CODES),
+    /*
+     * 19
+     */
+    19: getCode(r.lightingSource ?? r.lightSource, LIGHTING_CODES),
 
-    26: getCode(r.radio, RADIO_CODES),
+    /*
+     * 20
+     */
+    20: getCode(
+      r.latrineAvailability ?? r.latrineAccess ?? r.toiletAvailability,
+      LATRINE_ACCESS_CODES,
+    ),
 
-    27: getCode(r.television, TV_CODES),
+    /*
+     * 21
+     */
+    21: getCode(r.latrineType ?? r.toiletType ?? r.latrine, LATRINE_TYPE_CODES),
 
-    28: getCode(r.internet, INTERNET_CODES),
+    /*
+     * 22
+     */
+    22: getCode(
+      r.wasteWaterDrain ?? r.wasteWater ?? r.drainage ?? r.wasteWaterDisposal,
+      WASTE_WATER_CODES,
+    ),
 
-    29: getCode(r.laptopComputer, LAPTOP_CODES),
+    /*
+     * 23
+     */
+    23: getCode(
+      r.bathingArrangement ?? r.bathingFacility ?? r.bathing,
+      BATHING_CODES,
+    ),
 
-    30: getCode(r.mobilePhoneType ?? r.mobilePhone, MOBILE_CODES),
+    /*
+     * 24
+     */
+    24: getKitchenCode(r),
 
-    31: getCode(r.bicycleVehicle, TWO_WHEELER_CODES),
+    /*
+     * 25
+     */
+    25: getCode(r.cookingFuel ?? r.fuel, FUEL_CODES),
 
-    32: getCode(r.carVan, CAR_CODES),
+    /*
+     * 26
+     */
+    26: getCode(r.radio ?? r.radioAvailability, RADIO_CODES),
 
-    33: getCode(r.mainFoodGrain, GRAIN_CODES),
+    /*
+     * 27
+     */
+    27: getCode(r.television ?? r.tv, TV_CODES),
 
-    34: r.headMobile ?? r.mobileNumber ?? "",
+    /*
+     * 28
+     */
+    28: getCode(r.internet ?? r.internetAvailability, INTERNET_CODES),
+
+    /*
+     * 29
+     */
+    29: getCode(r.laptopComputer ?? r.laptop ?? r.computer, LAPTOP_CODES),
+
+    /*
+     * 30
+     */
+    30: getCode(
+      r.mobilePhoneType ?? r.mobilePhone ?? r.telephone,
+      MOBILE_CODES,
+    ),
+
+    /*
+     * 31
+     */
+    31: getCode(
+      r.bicycleVehicle ?? r.bicycle ?? r.twoWheeler,
+      TWO_WHEELER_CODES,
+    ),
+
+    /*
+     * 32
+     */
+    32: getCode(r.carVan ?? r.car ?? r.vehicle, CAR_CODES),
+
+    /*
+     * 33
+     */
+    33: getCode(
+      r.mainFoodGrain ?? r.foodGrain ?? r.mainGrain ?? r.mainFood,
+      GRAIN_CODES,
+    ),
+
+    /*
+     * 34
+     */
+    34: r.headMobile ?? r.mobileNumber ?? r.mobile ?? "",
   };
-}
-
-/* ============================================================
-   DATA ROW
-   ============================================================ */
-
-function CensusRow({ record, index, globalIndex }) {
-  const values = prepareRecord(record, globalIndex);
-
-  return (
-    <View
-      style={[
-        styles.dataRow,
-        {
-          backgroundColor: index % 2 === 0 ? "#ffffff" : "#fffdf7",
-        },
-      ]}
-    >
-      {columns.map((column) => {
-        const value = values[column.id];
-
-        const isName = column.id === 11;
-
-        const isMobile = column.id === 34;
-
-        const isLongText = isName || isMobile;
-
-        return (
-          <View
-            key={column.id}
-            style={[
-              styles.dataCell,
-              {
-                width: `${column.w}%`,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.dataText,
-                isLongText && styles.longDataText,
-                !isLongText && styles.codeText,
-              ]}
-            >
-              {value === null || value === undefined ? "" : String(value)}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-/* ============================================================
-   LEGEND BOX
-   ============================================================ */
-
-function LegendBox({ title, items, width = "20%" }) {
-  return (
-    <View
-      style={[
-        styles.legendBox,
-        {
-          width,
-        },
-      ]}
-    >
-      <Text style={styles.legendTitle}>{title}</Text>
-
-      <View style={styles.legendContent}>
-        {items.map((item, index) => (
-          <Text key={index} style={styles.legendItem}>
-            {item[0]} — {item[1]}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/* ============================================================
-   LEGENDS FROM THE SHEET
-   ============================================================ */
-
-function Legends() {
-  return (
-    <View style={styles.legendsArea}>
-      <LegendBox
-        title="৪  মেঝে"
-        width="12%"
-        items={[
-          ["1", "মাটি"],
-          ["2", "কাঠ/বাঁশ"],
-          ["3", "পোড়া ইট"],
-          ["4", "পাথর"],
-          ["5", "সিমেন্ট"],
-          ["6", "মোজাইক/ফ্লোর টাইলস"],
-          ["7", "অন্যান্য"],
-        ]}
-      />
-
-      <LegendBox
-        title="৫  দেওয়াল"
-        width="13%"
-        items={[
-          ["1", "ঘাস/খড়/বাঁশ"],
-          ["2", "প্লাস্টিক/পলিথিন"],
-          ["3", "মাটি/কাঁচা ইট"],
-          ["4", "কাঠ"],
-          ["5", "পাথর"],
-          ["6", "পাকা পাথর"],
-          ["7", "জিআই/মেটাল/অ্যাসবেস্টস"],
-          ["8", "পোড়া ইট"],
-          ["9", "কংক্রিট"],
-          ["0", "অন্যান্য"],
-        ]}
-      />
-
-      <LegendBox
-        title="৬  ছাদ"
-        width="13%"
-        items={[
-          ["1", "ঘাস/খড়/বাঁশ/কাঠ/মাটি"],
-          ["2", "প্লাস্টিক/পলিথিন"],
-          ["3", "দেশি/হাত তৈরি টালি"],
-          ["4", "মেশিন তৈরি টালি"],
-          ["5", "পোড়া ইট"],
-          ["6", "পাথর"],
-          ["7", "স্লেট"],
-          ["8", "জিআই/মেটাল/অ্যাসবেস্টস"],
-          ["9", "কংক্রিট"],
-          ["0", "অন্যান্য"],
-        ]}
-      />
-
-      <LegendBox
-        title="৭  ঘরের ব্যবহার"
-        width="14%"
-        items={[
-          ["1", "বাসগৃহ"],
-          ["2", "বাসগৃহ-সহ অন্যান্য"],
-          ["3", "দোকান/অফিস"],
-          ["4", "স্কুল/কলেজ"],
-          ["5", "হোটেল/লজ"],
-          ["6", "হাসপাতাল/ডিসপেনসারি"],
-          ["7", "কারখানা/কর্মশালা"],
-          ["8", "ধর্মীয় স্থান"],
-          ["9", "অন্যান্য"],
-          ["0", "খালি"],
-        ]}
-      />
-
-      <LegendBox
-        title="১৭  পানীয় জলের উৎস"
-        width="16%"
-        items={[
-          ["1", "পরিশুদ্ধ কলের জল"],
-          ["2", "অ-পরিশুদ্ধ কলের জল"],
-          ["3", "কুয়ো"],
-          ["4", "হ্যান্ড পাম্প"],
-          ["5", "টিউবওয়েল/বোরওয়েল"],
-          ["6", "ঝরনা"],
-          ["7", "নদী/খাল"],
-          ["8", "পুকুর/ট্যাংক/হ্রদ"],
-          ["9", "বোতলজাত জল"],
-          ["0", "অন্যান্য"],
-        ]}
-      />
-
-      <LegendBox
-        title="২৫  রান্নার প্রধান জ্বালানি"
-        width="14%"
-        items={[
-          ["1", "জ্বালানি কাঠ"],
-          ["2", "ফসলের অবশিষ্টাংশ"],
-          ["3", "গোবরের ঘুঁটে"],
-          ["4", "কয়লা/কাঠকয়লা"],
-          ["5", "কেরোসিন"],
-          ["6", "LPG/PNG"],
-          ["7", "বিদ্যুৎ"],
-          ["8", "বায়োগ্যাস"],
-          ["9", "সৌরশক্তি"],
-          ["0", "অন্যান্য"],
-        ]}
-      />
-
-      <LegendBox
-        title="৩০  টেলিফোন/মোবাইল"
-        width="10%"
-        items={[
-          ["1", "ল্যান্ডলাইন"],
-          ["2", "স্মার্টফোন"],
-          ["3", "সাধারণ মোবাইল"],
-          ["4", "উভয়"],
-          ["5", "নেই"],
-        ]}
-      />
-    </View>
-  );
 }
 
 /* ============================================================
@@ -961,10 +1295,12 @@ function Legends() {
    ============================================================ */
 
 function SheetHeader({ pageNumber, totalPages }) {
-  // pageNumber is zero-based
-  // PDF page 1 = pageNumber 0
   const actualPage = pageNumber + 1;
 
+  /*
+   * Odd = SIDE-A
+   * Even = SIDE-B
+   */
   const side = actualPage % 2 === 1 ? "SIDE-A" : "SIDE-B";
 
   return (
@@ -1030,16 +1366,232 @@ function SheetHeader({ pageNumber, totalPages }) {
 }
 
 /* ============================================================
-   PAGE
+   TABLE HEADER
    ============================================================ */
 
-function SideBPage({ records, pageNumber, totalPages }) {
-  const side = (pageNumber + 1) % 2 === 1 ? "SIDE-A" : "SIDE-B";
+function TableHeader() {
+  return (
+    <View style={styles.tableHeader}>
+      {columns.map((column) => (
+        <View
+          key={column.id}
+          style={[
+            styles.headerCell,
+            {
+              width: `${column.w}%`,
+            },
+          ]}
+        >
+          <Text style={styles.questionNo}>{column.id}</Text>
+
+          <Text style={styles.headerText}>{column.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* ============================================================
+   DATA ROW
+   ============================================================ */
+
+function CensusRow({ record, index, globalIndex }) {
+  const values = prepareRecord(record, globalIndex);
+
+  return (
+    <View
+      style={[
+        styles.dataRow,
+        {
+          backgroundColor: index % 2 === 0 ? "#ffffff" : "#fffdf7",
+        },
+      ]}
+    >
+      {columns.map((column) => {
+        const value = values[column.id];
+
+        const longField = column.id === 11 || column.id === 34;
+
+        return (
+          <View
+            key={column.id}
+            style={[
+              styles.dataCell,
+              {
+                width: `${column.w}%`,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.dataText,
+
+                longField ? styles.longDataText : styles.codeText,
+              ]}
+            >
+              {value === null || value === undefined ? "" : String(value)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+
+function LegendBox({ title, items, width }) {
+  return (
+    <View
+      style={[
+        styles.legendBox,
+        {
+          width,
+        },
+      ]}
+    >
+      <Text style={styles.legendTitle}>{title}</Text>
+
+      {items.map((item, index) => (
+        <Text key={index} style={styles.legendItem}>
+          {item[0]} — {item[1]}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/* ============================================================
+   LEGENDS
+   ============================================================ */
+
+function Legends() {
+  return (
+    <View style={styles.legendsArea}>
+      <LegendBox
+        title="৪ মেঝে"
+        width="12%"
+        items={[
+          ["1", "মাটি"],
+          ["2", "কাঠ/বাঁশ"],
+          ["3", "পোড়া ইট"],
+          ["4", "পাথর"],
+          ["5", "সিমেন্ট"],
+          ["6", "মোজাইক/ফ্লোর টাইলস"],
+          ["7", "অন্যান্য"],
+        ]}
+      />
+
+      <LegendBox
+        title="৫ দেওয়াল"
+        width="13%"
+        items={[
+          ["1", "ঘাস/খড়/বাঁশ"],
+          ["2", "প্লাস্টিক/পলিথিন"],
+          ["3", "মাটি/কাঁচা ইট"],
+          ["4", "কাঠ"],
+          ["5", "পাথর"],
+          ["6", "পাকা পাথর"],
+          ["7", "জিআই/মেটাল/অ্যাসবেস্টস"],
+          ["8", "পোড়া ইট"],
+          ["9", "কংক্রিট"],
+          ["0", "অন্যান্য"],
+        ]}
+      />
+
+      <LegendBox
+        title="৬ ছাদ"
+        width="13%"
+        items={[
+          ["1", "ঘাস/খড়/বাঁশ/কাঠ/মাটি"],
+          ["2", "প্লাস্টিক/পলিথিন"],
+          ["3", "দেশি/হাত তৈরি টালি"],
+          ["4", "মেশিন তৈরি টালি"],
+          ["5", "পোড়া ইট"],
+          ["6", "পাথর"],
+          ["7", "স্লেট"],
+          ["8", "জিআই/মেটাল/অ্যাসবেস্টস"],
+          ["9", "কংক্রিট"],
+          ["0", "অন্যান্য"],
+        ]}
+      />
+
+      <LegendBox
+        title="৭ ঘরের ব্যবহার"
+        width="14%"
+        items={[
+          ["1", "বাসগৃহ"],
+          ["2", "বাসগৃহ-সহ অন্যান্য"],
+          ["3", "দোকান/অফিস"],
+          ["4", "স্কুল/কলেজ"],
+          ["5", "হোটেল/লজ"],
+          ["6", "হাসপাতাল/ডিসপেনসারি"],
+          ["7", "কারখানা/কর্মশালা"],
+          ["8", "ধর্মীয় স্থান"],
+          ["9", "অন্যান্য"],
+          ["0", "খালি"],
+        ]}
+      />
+
+      <LegendBox
+        title="১৭ পানীয় জলের উৎস"
+        width="16%"
+        items={[
+          ["1", "পরিশুদ্ধ কলের জল"],
+          ["2", "অ-পরিশুদ্ধ কলের জল"],
+          ["3", "কুয়ো"],
+          ["4", "হ্যান্ড পাম্প"],
+          ["5", "টিউবওয়েল/বোরওয়েল"],
+          ["6", "ঝরনা"],
+          ["7", "নদী/খাল"],
+          ["8", "পুকুর/ট্যাংক/হ্রদ"],
+          ["9", "বোতলজাত জল"],
+          ["0", "অন্যান্য"],
+        ]}
+      />
+
+      <LegendBox
+        title="২৫ রান্নার জ্বালানি"
+        width="14%"
+        items={[
+          ["1", "জ্বালানি কাঠ"],
+          ["2", "ফসলের অবশিষ্টাংশ"],
+          ["3", "গোবরের ঘুঁটে"],
+          ["4", "কয়লা/কাঠকয়লা"],
+          ["5", "কেরোসিন"],
+          ["6", "LPG/PNG"],
+          ["7", "বিদ্যুৎ"],
+          ["8", "বায়োগ্যাস"],
+          ["9", "সৌরশক্তি"],
+          ["0", "অন্যান্য"],
+        ]}
+      />
+
+      <LegendBox
+        title="৩০ মোবাইল/টেলিফোন"
+        width="10%"
+        items={[
+          ["1", "ল্যান্ডলাইন"],
+          ["2", "স্মার্টফোন"],
+          ["3", "সাধারণ মোবাইল"],
+          ["4", "উভয়"],
+          ["5", "নেই"],
+        ]}
+      />
+    </View>
+  );
+}
+
+/* ============================================================
+   CENSUS PAGE
+   ============================================================ */
+
+function CensusPage({ records, pageNumber, totalPages }) {
   return (
     <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
       <SheetHeader pageNumber={pageNumber} totalPages={totalPages} />
-
-      {/* Main table */}
 
       <View style={styles.table}>
         <TableHeader />
@@ -1053,7 +1605,7 @@ function SideBPage({ records, pageNumber, totalPages }) {
           />
         ))}
 
-        {/* Fill blank rows when last page has fewer than 10 */}
+        {/* Blank rows to make exactly 10 rows */}
 
         {Array.from({
           length: 10 - records.length,
@@ -1067,16 +1619,10 @@ function SideBPage({ records, pageNumber, totalPages }) {
         ))}
       </View>
 
-      {/* Legends */}
-
       <Legends />
-
-      {/* Footer */}
 
       <View style={styles.footer}>
         <Text>Census 2027 — Houselisting & Housing Census</Text>
-
-        <Text>{side}</Text>
 
         <Text>
           Page {pageNumber + 1} of {totalPages}
@@ -1089,24 +1635,15 @@ function SideBPage({ records, pageNumber, totalPages }) {
 /* ============================================================
    DOCUMENT
 
-   *** THIS IS THE IMPORTANT PART ***
+   10 RECORDS = ONE PAGE
 
-   The array is divided into chunks of 10.
-
-   It does NOT do:
-
-       records.map(record => <Page>...</Page>)
-
-   Instead:
-
-       records.slice(0, 10)    → Page 1
-       records.slice(10, 20)   → Page 2
-       records.slice(20, 30)   → Page 3
-
-   Therefore each page contains 10 rows.
+   1–10    → PAGE 1 → SIDE-A
+   11–20   → PAGE 2 → SIDE-B
+   21–30   → PAGE 3 → SIDE-A
+   31–40   → PAGE 4 → SIDE-B
    ============================================================ */
 
-export function Census2027SideBDocument({ records = [] }) {
+export function Census2027DataSheetDocument({ records = [] }) {
   const pages = [];
 
   for (let i = 0; i < records.length; i += 10) {
@@ -1115,15 +1652,15 @@ export function Census2027SideBDocument({ records = [] }) {
 
   return (
     <Document
-      title="Census 2027 Data Sheet"
+      title="Census 2027"
       author="Census 2027"
       subject="Houselisting and Housing Census"
     >
-      {pages.map((pageRecords, index) => (
-        <SideBPage
-          key={index}
+      {pages.map((pageRecords, pageIndex) => (
+        <CensusPage
+          key={pageIndex}
           records={pageRecords}
-          pageNumber={index}
+          pageNumber={pageIndex}
           totalPages={pages.length}
         />
       ))}
@@ -1132,16 +1669,16 @@ export function Census2027SideBDocument({ records = [] }) {
 }
 
 /* ============================================================
-   DOWNLOAD FUNCTION
+   DOWNLOAD
    ============================================================ */
 
-export async function downloadCensusSideB(records) {
+export async function downloadCensusDataSheet(records) {
   if (!Array.isArray(records) || records.length === 0) {
     throw new Error("No Census records available.");
   }
 
   const blob = await pdf(
-    <Census2027SideBDocument records={records} />,
+    <Census2027DataSheetDocument records={records} />,
   ).toBlob();
 
   const url = URL.createObjectURL(blob);
@@ -1150,7 +1687,7 @@ export async function downloadCensusSideB(records) {
 
   link.href = url;
 
-  link.download = `Census-2027-Data-Sheet-${records.length}-records.pdf`;
+  link.download = `Census-2027-${records.length}-records.pdf`;
 
   document.body.appendChild(link);
 
@@ -1173,8 +1710,13 @@ export function Census2027DataSheetDownloadButton({
 }) {
   const [loading, setLoading] = useState(false);
 
-  const handleDownload = async () => {
-    if (!Array.isArray(records) || records.length === 0) {
+  const pdfRecords =
+    Array.isArray(providedRecords) && providedRecords.length > 0
+      ? providedRecords
+      : records;
+
+  async function handleDownload() {
+    if (!Array.isArray(pdfRecords) || pdfRecords.length === 0) {
       alert("কোনও Census record পাওয়া যায়নি।");
 
       return;
@@ -1183,26 +1725,26 @@ export function Census2027DataSheetDownloadButton({
     try {
       setLoading(true);
 
-      await downloadCensusSideB(records);
+      await downloadCensusDataSheet(pdfRecords);
     } catch (error) {
-      console.error("Census Data Sheet PDF error:", error);
+      console.error("Census PDF error:", error);
 
-      alert("PDF তৈরি করা যায়নি।");
+      alert(error?.message || "PDF তৈরি করা যায়নি।");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <button
       type="button"
       onClick={handleDownload}
       disabled={loading}
-      className={`rounded-lg bg-green-700 px-5 py-3 font-bold text-white shadow hover:bg-green-800 disabled:opacity-60 ${className}`}
+      className={`rounded-lg bg-green-700 px-5 py-3 font-bold text-white shadow hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {loading
         ? "PDF তৈরি হচ্ছে..."
-        : `📄 Data Sheet PDF (${records.length} records)`}
+        : `📄 Census Data Sheet PDF (${pdfRecords.length})`}
     </button>
   );
 }
@@ -1227,9 +1769,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
 
-  /* --------------------------------------------------------
-       HEADER
-       -------------------------------------------------------- */
+  /* HEADER */
 
   topHeader: {
     height: 28,
@@ -1293,9 +1833,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  /* --------------------------------------------------------
-       META
-       -------------------------------------------------------- */
+  /* META */
 
   metaRow: {
     height: 27,
@@ -1337,9 +1875,7 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
 
-  /* --------------------------------------------------------
-       TABLE
-       -------------------------------------------------------- */
+  /* TABLE */
 
   table: {
     width: "100%",
@@ -1413,9 +1949,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  /* --------------------------------------------------------
-       DATA ROW
-       -------------------------------------------------------- */
+  /* DATA */
 
   dataRow: {
     height: 29,
@@ -1463,9 +1997,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* --------------------------------------------------------
-       LEGENDS
-       -------------------------------------------------------- */
+  /* LEGENDS */
 
   legendsArea: {
     height: 112,
@@ -1503,10 +2035,6 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
 
-  legendContent: {
-    flexDirection: "column",
-  },
-
   legendItem: {
     fontSize: 4.1,
 
@@ -1515,9 +2043,7 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
 
-  /* --------------------------------------------------------
-       FOOTER
-       -------------------------------------------------------- */
+  /* FOOTER */
 
   footer: {
     height: 13,
