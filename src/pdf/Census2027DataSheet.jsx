@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 
-import providedRecords from "../../files/census2027.json";
-
 import {
   Document,
   Page,
@@ -1710,13 +1708,8 @@ export function Census2027DataSheetDownloadButton({
 }) {
   const [loading, setLoading] = useState(false);
 
-  const pdfRecords =
-    Array.isArray(providedRecords) && providedRecords.length > 0
-      ? providedRecords
-      : records;
-
   async function handleDownload() {
-    if (!Array.isArray(pdfRecords) || pdfRecords.length === 0) {
+    if (!Array.isArray(records) || records.length === 0) {
       alert("কোনও Census record পাওয়া যায়নি।");
 
       return;
@@ -1725,7 +1718,7 @@ export function Census2027DataSheetDownloadButton({
     try {
       setLoading(true);
 
-      await downloadCensusDataSheet(pdfRecords);
+      await downloadCensusDataSheet(records);
     } catch (error) {
       console.error("Census PDF error:", error);
 
@@ -1744,7 +1737,7 @@ export function Census2027DataSheetDownloadButton({
     >
       {loading
         ? "PDF তৈরি হচ্ছে..."
-        : `📄 Census Data Sheet PDF (${pdfRecords.length})`}
+        : `📄 Census Data Sheet PDF (${records.length})`}
     </button>
   );
 }
