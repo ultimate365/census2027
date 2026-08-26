@@ -48,9 +48,31 @@ function sortByBuildingNo(data) {
       return firstNumber - secondNumber;
     }
 
-    return firstBuildingNo.localeCompare(secondBuildingNo, undefined, {
-      numeric: true,
-    });
+    const buildingOrder = firstBuildingNo.localeCompare(
+      secondBuildingNo,
+      undefined,
+      {
+        numeric: true,
+      },
+    );
+
+    if (buildingOrder !== 0) {
+      return buildingOrder;
+    }
+
+    const firstCreatedAt = getRecordTimestamp(first.createdAt);
+    const secondCreatedAt = getRecordTimestamp(second.createdAt);
+
+    if (firstCreatedAt === null && secondCreatedAt === null) {
+      return first.id.localeCompare(second.id);
+    }
+
+    if (firstCreatedAt === null) return 1;
+    if (secondCreatedAt === null) return -1;
+
+    return (
+      firstCreatedAt - secondCreatedAt || first.id.localeCompare(second.id)
+    );
   });
 }
 
