@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 import { CensusPDFButton, CensusBulkPDFButton } from "@/pdf/Census2027PDF";
+import { Census2027DataSheetDownloadButton } from "@/pdf/Census2027DataSheet";
 const createDownloadLink = (myData, fileName) => {
   const json = JSON.stringify(myData, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -582,6 +583,7 @@ export default function MyDataPage() {
                 Download JSON Data
               </button>
               <CensusBulkPDFButton records={displayedRecords} />
+              <Census2027DataSheetDownloadButton records={displayedRecords} />
               <button
                 type="button"
                 onClick={() => setSortByBuilding((current) => !current)}
