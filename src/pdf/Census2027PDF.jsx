@@ -605,6 +605,10 @@ function CensusPage({ data }) {
               value: d.headName,
             },
             {
+              label: "পরিবার সংখ্যা",
+              value: d.householdNo,
+            },
+            {
               label: "মোবাইল",
               value: d.headMobile,
             },

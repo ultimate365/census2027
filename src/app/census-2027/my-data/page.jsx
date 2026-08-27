@@ -463,6 +463,7 @@ export default function MyDataPage() {
     );
 
     const numericFields = [
+      "householdNo",
       "householdMembers",
       "roomCount",
       "maleMembers",
@@ -1114,6 +1115,7 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
         ["Head Name", record.headName],
         ["Head Sex", record.headSex],
         ["Head Mobile", record.headMobile],
+        ["পরিবার সংখ্যা", record.householdNo],
         ["Self Enumeration", record.selfEnumeration],
         ["Self Enumeration ID", record.selfEnumerationID],
         ["Total Members", record.householdMembers],
@@ -1440,6 +1442,15 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                   maxLength={12}
                 />
               )}
+              <EditInput
+                label="পরিবার সংখ্যা"
+                name="householdNo"
+                type="number"
+                min="0"
+                value={record.householdNo}
+                onChange={onChange}
+              />
+
               <EditInput
                 label="Total Members"
                 name="householdMembers"

@@ -928,7 +928,7 @@ const columns = [
 
   {
     id: 9,
-    label: "পরিবারের\nসংখ্যা",
+    label: "পরিবার\nসংখ্যা",
     w: 3.2,
   },
 
@@ -1138,7 +1138,12 @@ function prepareRecord(record, globalIndex) {
     /*
      * 9
      */
-    9: r.familyCount ?? r.householdCount ?? r.numberOfFamilies ?? 1,
+    9:
+      r.householdNo ??
+      r.familyCount ??
+      r.householdCount ??
+      r.numberOfFamilies ??
+      "",
 
     /*
      * 10

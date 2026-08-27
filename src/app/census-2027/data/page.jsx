@@ -587,6 +587,7 @@ export default function CensusDataPage() {
        * Convert numeric values.
        */
       const numericFields = [
+        "householdNo",
         "householdMembers",
         "maleMembers",
         "femaleMembers",
@@ -1474,6 +1475,7 @@ function DetailsModal({
       fields: [
         ["Head Name", record.headName],
         ["Head Mobile", record.headMobile],
+        ["পরিবার সংখ্যা", record.householdNo],
         ["Self Enumeration", record.selfEnumeration],
         ["Self Enumeration ID", record.selfEnumerationID],
         ["Total Members", record.householdMembers],
@@ -1823,6 +1825,15 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
                   maxLength={12}
                 />
               )}
+
+              <EditInput
+                label="পরিবার সংখ্যা"
+                name="householdNo"
+                type="number"
+                min="0"
+                value={record.householdNo}
+                onChange={onChange}
+              />
 
               <EditInput
                 label="Total Members"

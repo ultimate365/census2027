@@ -171,6 +171,7 @@ export default function Census2027Page() {
     houseCondition: "ভালো",
 
     // Household
+    householdNo: "",
     householdMembers: "",
     roomCount: "",
     maleMembers: "",
@@ -856,6 +857,8 @@ export default function Census2027Page() {
         // HOUSEHOLD
         // -------------------------------------------
 
+        householdNo: Number(form.householdNo || 0),
+
         householdMembers: totalMembers,
 
         maleMembers: male,
@@ -1431,6 +1434,15 @@ export default function Census2027Page() {
           <Section number="৬" title="পরিবারের সদস্য সংখ্যা">
             {/* <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"> */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="পরিবার সংখ্যা"
+                name="householdNo"
+                form={form}
+                onChange={handleChange}
+                type="number"
+                min="0"
+              />
+
               <Input
                 label="পরিবারের মোট সদস্য"
                 name="householdMembers"
