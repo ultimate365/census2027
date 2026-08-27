@@ -77,6 +77,28 @@ function sortByBuildingNo(data) {
   });
 }
 
+function sortByLineNumber(data) {
+  return [...data].sort((first, second) => {
+    const firstLineNumber = Number(String(first.lineNumber ?? "").trim());
+    const secondLineNumber = Number(String(second.lineNumber ?? "").trim());
+    const firstSortValue = Number.isFinite(firstLineNumber)
+      ? String(first.lineNumber ?? "").trim() === ""
+        ? Number.POSITIVE_INFINITY
+        : firstLineNumber
+      : Number.POSITIVE_INFINITY;
+    const secondSortValue = Number.isFinite(secondLineNumber)
+      ? String(second.lineNumber ?? "").trim() === ""
+        ? Number.POSITIVE_INFINITY
+        : secondLineNumber
+      : Number.POSITIVE_INFINITY;
+
+    return (
+      firstSortValue - secondSortValue ||
+      compareRecordsBySubmission(first, second)
+    );
+  });
+}
+
 const editSelectOptions = {
   selfEnumeration: ["হ্যাঁ", "না"],
   floorMaterial: [
@@ -275,6 +297,7 @@ export default function MyDataPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [villageFilter, setVillageFilter] = useState("all");
   const [sortByBuilding, setSortByBuilding] = useState(false);
+  const [sortByLine, setSortByLine] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -365,11 +388,11 @@ export default function MyDataPage() {
     });
   }, [records, search, statusFilter, villageFilter]);
 
-  const displayedRecords = useMemo(
-    () =>
-      sortByBuilding ? sortByBuildingNo(filteredRecords) : filteredRecords,
-    [filteredRecords, sortByBuilding],
-  );
+  const displayedRecords = useMemo(() => {
+    if (sortByLine) return sortByLineNumber(filteredRecords);
+    if (sortByBuilding) return sortByBuildingNo(filteredRecords);
+    return filteredRecords;
+  }, [filteredRecords, sortByBuilding, sortByLine]);
 
   const formatDate = (value) => {
     if (!value) return "—";
@@ -597,7 +620,10 @@ export default function MyDataPage() {
               <Census2027DataSheetDownloadButton records={displayedRecords} />
               <button
                 type="button"
-                onClick={() => setSortByBuilding((current) => !current)}
+                onClick={() => {
+                  setSortByBuilding((current) => !current);
+                  setSortByLine(false);
+                }}
                 className={`rounded-lg px-4 py-2.5 text-sm font-bold shadow transition ${
                   sortByBuilding
                     ? "bg-yellow-300 text-green-950 hover:bg-yellow-200"
@@ -608,10 +634,27 @@ export default function MyDataPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setSortByBuilding(false)}
-                disabled={!sortByBuilding}
+                onClick={() => {
+                  setSortByLine((current) => !current);
+                  setSortByBuilding(false);
+                }}
+                className={`rounded-lg px-4 py-2.5 text-sm font-bold shadow transition ${
+                  sortByLine
+                    ? "bg-yellow-300 text-green-950 hover:bg-yellow-200"
+                    : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                {sortByLine ? "Line Order On" : "Sort by Line No."}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortByBuilding(false);
+                  setSortByLine(false);
+                }}
+                disabled={!sortByBuilding && !sortByLine}
                 className={`rounded-lg px-4 py-2.5 text-sm font-bold shadow transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  !sortByBuilding
+                  !sortByBuilding && !sortByLine
                     ? "bg-yellow-300 text-green-950"
                     : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
                 }`}
