@@ -857,7 +857,10 @@ export default function Census2027Page() {
         // HOUSEHOLD
         // -------------------------------------------
 
-        householdNo: Number(form.householdNo || 0),
+        householdNo:
+          form.householdNo === ""
+            ? ""
+            : String(form.householdNo).padStart(3, "0"),
 
         householdMembers: totalMembers,
 

@@ -463,7 +463,6 @@ export default function MyDataPage() {
     );
 
     const numericFields = [
-      "householdNo",
       "householdMembers",
       "roomCount",
       "maleMembers",

@@ -587,7 +587,6 @@ export default function CensusDataPage() {
        * Convert numeric values.
        */
       const numericFields = [
-        "householdNo",
         "householdMembers",
         "maleMembers",
         "femaleMembers",
