@@ -155,6 +155,7 @@ export default function Census2027Page() {
     longitude: "",
 
     // Census
+    lineNumber: "",
     buildingNo: "CN",
     censusNo: "",
     headName: "",
@@ -857,6 +858,11 @@ export default function Census2027Page() {
         // HOUSEHOLD
         // -------------------------------------------
 
+        lineNumber:
+          form.lineNumber === ""
+            ? ""
+            : String(form.lineNumber).padStart(3, "0"),
+
         householdNo:
           form.householdNo === ""
             ? ""
@@ -1253,6 +1259,15 @@ export default function Census2027Page() {
 
           <Section number="৩" title="Building ও Census তথ্য">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="লাইন নম্বর"
+                name="lineNumber"
+                form={form}
+                onChange={handleChange}
+                type="number"
+                min="0"
+              />
+
               <Input
                 label="Building No."
                 name="buildingNo"

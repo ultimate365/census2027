@@ -473,6 +473,16 @@ export default function MyDataPage() {
       "longitude",
     ];
 
+    ["lineNumber", "householdNo"].forEach((field) => {
+      if (!(field in dataToSave)) return;
+      dataToSave[field] =
+        dataToSave[field] === "" ||
+        dataToSave[field] === null ||
+        dataToSave[field] === undefined
+          ? ""
+          : String(dataToSave[field]).padStart(3, "0");
+    });
+
     numericFields.forEach((field) => {
       if (!(field in dataToSave)) return;
       dataToSave[field] =
@@ -1078,6 +1088,7 @@ function DetailsModal({ record, onClose, onEdit, onDelete, formatDate }) {
         // ["Household ID", record.householdId],
         // ["Survey Year", record.surveyYear],
         // ["Status", record.status],
+        ["Line Number", record.lineNumber],
         ["Building No.", record.buildingNo],
         ["Census No.", record.censusNo],
         ["Mobile No.", record.mobileNo],
@@ -1285,6 +1296,15 @@ function EditModal({ record, loading, onChange, onSave, onClose }) {
         <div className="space-y-6">
           <EditSection title="Identification">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <EditInput
+                label="Line Number"
+                name="lineNumber"
+                type="number"
+                min="0"
+                value={record.lineNumber}
+                onChange={onChange}
+              />
+
               {/* <EditInput
                 label="Household ID"
                 name="householdId"

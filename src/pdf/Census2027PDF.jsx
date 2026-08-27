@@ -605,6 +605,10 @@ function CensusPage({ data }) {
               value: d.headName,
             },
             {
+              label: "Line Number",
+              value: d.lineNumber,
+            },
+            {
               label: "পরিবার সংখ্যা",
               value: d.householdNo,
             },
