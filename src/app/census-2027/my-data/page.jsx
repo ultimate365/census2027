@@ -394,6 +394,15 @@ export default function MyDataPage() {
     return filteredRecords;
   }, [filteredRecords, sortByBuilding, sortByLine]);
 
+  const totalPopulation = useMemo(
+    () =>
+      records.reduce((total, record) => {
+        const members = Number(record.householdMembers);
+        return Number.isFinite(members) ? total + members : total;
+      }, 0),
+    [records],
+  );
+
   const formatDate = (value) => {
     if (!value) return "—";
 
@@ -679,8 +688,13 @@ export default function MyDataPage() {
           </div>
         </div>
 
-        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total Records" value={records.length} icon="📋" />
+          <StatCard
+            label="Total Population"
+            value={totalPopulation}
+            icon="👥"
+          />
           <StatCard
             label="Filtered Records"
             value={filteredRecords.length}
