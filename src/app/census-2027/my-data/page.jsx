@@ -679,6 +679,13 @@ export default function MyDataPage() {
               </button>
               <button
                 type="button"
+                onClick={() => router.push("/census-2027/person")}
+                className="rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
+              >
+                + New Person
+              </button>
+              <button
+                type="button"
                 onClick={() => window.location.reload()}
                 className="rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
               >

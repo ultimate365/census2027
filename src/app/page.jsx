@@ -275,7 +275,12 @@ export default function HomePage() {
                 >
                   + New Household Data
                 </Link>
-
+                <Link
+                  href="/census-2027/person"
+                  className="inline-block rounded-lg bg-white px-6 py-3 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
+                >
+                  Add Person
+                </Link>
                 <Link
                   href="/census-2027/my-data"
                   className="rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-center text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"

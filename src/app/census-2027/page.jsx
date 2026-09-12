@@ -1074,12 +1074,20 @@ export default function Census2027Page() {
                     : "Enumerator"}
                 </p>
 
-                <Link
-                  href="/census-2027/my-data"
-                  className="mt-3 inline-block rounded-lg bg-white px-4 py-2 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
-                >
-                  Go to My Data
-                </Link>
+                <div className="mt-3 flex gap-2">
+                  <Link
+                    href="/census-2027/person"
+                    className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
+                  >
+                    Add Person
+                  </Link>
+                  <Link
+                    href="/census-2027/my-data"
+                    className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-bold text-green-800 shadow transition hover:bg-green-50"
+                  >
+                    Go to My Data
+                  </Link>
+                </div>
               </div>
             )}
           </div>
