@@ -253,7 +253,8 @@ const FIELDS = [
     key: "fatherParticulars",
     label: "Father's Particulars",
     bn: "পিতার বিবরণ",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -261,7 +262,8 @@ const FIELDS = [
     key: "motherParticulars",
     label: "Mother's Particulars",
     bn: "মাতার বিবরণ",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -277,7 +279,8 @@ const FIELDS = [
     key: "motherTongueLanguages",
     label: "Mother Tongue and other languages known",
     bn: "মাতৃভাষা এবং জানা অন্যান্য ভাষা",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -333,7 +336,8 @@ const FIELDS = [
     key: "industryTradeService",
     label: "Nature of industry, trade or service",
     bn: "শিল্প, ব্যবসা বা পরিষেবার প্রকৃতি",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -349,7 +353,8 @@ const FIELDS = [
     key: "nonEconomicActivity",
     label: "Non-economic activity",
     bn: "অর্থনৈতিক-বহির্ভূত কাজ",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -365,7 +370,8 @@ const FIELDS = [
     key: "placeOfWork",
     label: "Place of work",
     bn: "কর্মস্থল",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -373,7 +379,8 @@ const FIELDS = [
     key: "birthPlace",
     label: "Birth place",
     bn: "জন্মস্থান",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -381,7 +388,8 @@ const FIELDS = [
     key: "placeOfLastResidence",
     label: "Place of last residence",
     bn: "শেষ বসবাসের স্থান",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
@@ -405,7 +413,8 @@ const FIELDS = [
     key: "permanentResidentialAddress",
     label: "Permanent Residential Address",
     bn: "স্থায়ী আবাসিক ঠিকানা",
-    type: "textarea",
+    type: "text",
+    // type: "textarea",
   },
 
   {
