@@ -431,7 +431,7 @@ const FIELDS = [
     key: "aadhaarNumber",
     label: "Aadhaar Number",
     bn: "আধার নম্বর",
-    type: "text",
+    type: "number",
   },
   {
     no: 38,
