@@ -20,7 +20,148 @@ import {
 import { useRouter } from "next/navigation";
 
 /* ============================================================
-   40 CENSUS PERSON FIELDS
+   COMMON OPTIONS
+   ============================================================ */
+
+const OPTIONS = {
+  relationshipToHead: [
+    "Head",
+    "Wife/Husband",
+    "Son",
+    "Daughter",
+    "Father",
+    "Mother",
+    "Brother",
+    "Sister",
+    "Grandson",
+    "Granddaughter",
+    "Father-in-law",
+    "Mother-in-law",
+    "Son-in-law",
+    "Daughter-in-law",
+    "Other Relative",
+    "Non Relative",
+  ],
+
+  sex: ["Male", "Female", "Transgender"],
+
+  currentMaritalStatus: [
+    "Never Married",
+    "Currently Married",
+    "Widowed",
+    "Divorced",
+    "Separated",
+  ],
+
+  nationality: ["Indian", "Other Country"],
+
+  religion: [
+    "Hindu",
+    "Muslim",
+    "Christian",
+    "Sikh",
+    "Buddhist",
+    "Jain",
+    "Parsi",
+    "Other",
+    "No Religion",
+  ],
+
+  caste: [
+    "General",
+    "Scheduled Caste",
+    "Scheduled Tribe",
+    "Other Backward Class",
+    "Other",
+  ],
+
+  disability: [
+    "No Disability",
+    "Seeing",
+    "Hearing",
+    "Speech",
+    "Movement",
+    "Mental Illness",
+    "Intellectual Disability",
+    "Multiple Disability",
+    "Other Disability",
+  ],
+
+  literacyDigitalStatus: [
+    "Illiterate",
+    "Literate",
+    "Literate with Digital Literacy",
+  ],
+
+  educationalInstitution: [
+    "Never Attended",
+    "Currently Attending",
+    "Attended Before",
+    "Dropped Out",
+  ],
+
+  highestEducation: [
+    "No Education",
+    "Below Primary",
+    "Primary",
+    "Middle",
+    "Secondary",
+    "Higher Secondary",
+    "Diploma",
+    "Graduate",
+    "Post Graduate",
+    "Professional Degree",
+    "Doctorate",
+  ],
+
+  workedLastYear: ["Yes", "No"],
+
+  categoryOfEconomicActivity: ["Main Worker", "Marginal Worker", "Non Worker"],
+
+  classOfWorker: [
+    "Government Employee",
+    "Private Employee",
+    "Self Employed",
+    "Employer",
+    "Casual Labour",
+    "Unpaid Family Worker",
+    "Other",
+  ],
+
+  seekingWork: ["Yes", "No"],
+
+  reasonForMigration: [
+    "Work/Employment",
+    "Business",
+    "Education",
+    "Marriage",
+    "Moved with Household",
+    "Birth",
+    "Natural Disaster",
+    "Other",
+  ],
+
+  placeOfCovidVaccination: [
+    "Government Hospital",
+    "Private Hospital",
+    "Health Centre",
+    "Camp",
+    "Not Vaccinated",
+  ],
+
+  drivingLicence: ["Yes", "No"],
+
+  childrenCurrentlyPresent: Array.from({ length: 16 }, (_, i) => String(i)),
+
+  childrenEverBorn: Array.from({ length: 16 }, (_, i) => String(i)),
+
+  childrenBornLastYear: Array.from({ length: 6 }, (_, i) => String(i)),
+
+  totalBankAccounts: Array.from({ length: 11 }, (_, i) => String(i)),
+};
+
+/* ============================================================
+   FIELDS
    ============================================================ */
 
 const FIELDS = [
@@ -36,20 +177,20 @@ const FIELDS = [
     key: "relationshipToHead",
     label: "Relationship to head",
     bn: "গৃহপ্রধানের সঙ্গে সম্পর্ক",
-    type: "text",
+    type: "select",
   },
   {
     no: 3,
     key: "sex",
     label: "Sex",
     bn: "লিঙ্গ",
-    type: "text",
+    type: "select",
   },
   {
     no: 4,
     key: "dateOfBirth",
-    label: "Date of Birth and Age",
-    bn: "জন্মতারিখ ও বয়স",
+    label: "Date of Birth",
+    bn: "জন্মতারিখ",
     type: "date",
   },
   {
@@ -57,7 +198,7 @@ const FIELDS = [
     key: "currentMaritalStatus",
     label: "Current Marital Status",
     bn: "বর্তমান বৈবাহিক অবস্থা",
-    type: "text",
+    type: "select",
   },
   {
     no: 6,
@@ -78,21 +219,21 @@ const FIELDS = [
     key: "nationality",
     label: "Nationality as declared",
     bn: "ঘোষিত নাগরিকত্ব",
-    type: "text",
+    type: "select",
   },
   {
     no: 9,
     key: "religion",
     label: "Religion",
     bn: "ধর্ম",
-    type: "text",
+    type: "select",
   },
   {
     no: 10,
     key: "caste",
-    label: "SC / ST / Caste",
-    bn: "তপশিলি জাতি / উপজাতি / জাতি",
-    type: "text",
+    label: "Scheduled Caste / Scheduled Tribe / Caste",
+    bn: "তপশিলি জাতি / তপশিলি উপজাতি / জাতি",
+    type: "select",
   },
   {
     no: 11,
@@ -113,7 +254,7 @@ const FIELDS = [
     key: "disability",
     label: "Disability",
     bn: "প্রতিবন্ধিতা",
-    type: "text",
+    type: "select",
   },
   {
     no: 14,
@@ -127,35 +268,35 @@ const FIELDS = [
     key: "literacyDigitalStatus",
     label: "Literacy and digital literacy status",
     bn: "সাক্ষরতা ও ডিজিটাল সাক্ষরতার অবস্থা",
-    type: "text",
+    type: "select",
   },
   {
     no: 16,
     key: "educationalInstitution",
     label: "Status of attendance in educational institution",
     bn: "শিক্ষাপ্রতিষ্ঠানে উপস্থিতির অবস্থা",
-    type: "text",
+    type: "select",
   },
   {
     no: 17,
     key: "highestEducation",
-    label: "Highest educational level and Stream/Discipline",
+    label: "Highest educational level attained and Stream/Discipline",
     bn: "সর্বোচ্চ শিক্ষাগত স্তর এবং শাখা/বিষয়",
-    type: "textarea",
+    type: "select",
   },
   {
     no: 18,
     key: "workedLastYear",
     label: "Worked any time during last year",
     bn: "গত বছরে কোনো সময় কাজ করেছেন কি না",
-    type: "text",
+    type: "select",
   },
   {
     no: 19,
     key: "categoryOfEconomicActivity",
     label: "Category of economic activity",
     bn: "অর্থনৈতিক কাজের শ্রেণি",
-    type: "text",
+    type: "select",
   },
   {
     no: 20,
@@ -176,7 +317,7 @@ const FIELDS = [
     key: "classOfWorker",
     label: "Class of worker",
     bn: "কর্মীর শ্রেণি",
-    type: "text",
+    type: "select",
   },
   {
     no: 23,
@@ -190,7 +331,7 @@ const FIELDS = [
     key: "seekingWork",
     label: "Seeking or available for work",
     bn: "কাজ খুঁজছেন বা কাজের জন্য উপলব্ধ",
-    type: "text",
+    type: "select",
   },
   {
     no: 25,
@@ -218,7 +359,7 @@ const FIELDS = [
     key: "reasonForMigration",
     label: "Reason for migration",
     bn: "অভিবাসনের কারণ",
-    type: "textarea",
+    type: "select",
   },
   {
     no: 29,
@@ -239,35 +380,35 @@ const FIELDS = [
     key: "childrenCurrentlyPresent",
     label: "Number of children surviving at present",
     bn: "বর্তমানে জীবিত সন্তানের সংখ্যা",
-    type: "number",
+    type: "select",
   },
   {
     no: 32,
     key: "childrenEverBorn",
     label: "Number of children ever born alive",
     bn: "জীবিত জন্ম দেওয়া মোট সন্তানের সংখ্যা",
-    type: "number",
+    type: "select",
   },
   {
     no: 33,
     key: "childrenBornLastYear",
     label: "Children born alive during last one year",
     bn: "গত এক বছরে জীবিত জন্ম নেওয়া সন্তানের সংখ্যা",
-    type: "number",
+    type: "select",
   },
   {
     no: 34,
     key: "placeOfCovidVaccination",
     label: "Place of Covid-19 Vaccination",
     bn: "কোভিড-১৯ টিকাকরণের স্থান",
-    type: "text",
+    type: "select",
   },
   {
     no: 35,
     key: "totalBankAccounts",
     label: "Total number of Bank Accounts",
     bn: "মোট ব্যাংক অ্যাকাউন্টের সংখ্যা",
-    type: "number",
+    type: "select",
   },
   {
     no: 36,
@@ -302,7 +443,7 @@ const FIELDS = [
     key: "drivingLicence",
     label: "Availability of Driving License",
     bn: "ড্রাইভিং লাইসেন্সের প্রাপ্যতা",
-    type: "text",
+    type: "select",
   },
 ];
 
@@ -317,53 +458,7 @@ FIELDS.forEach((field) => {
 });
 
 /* ============================================================
-   FORMAT DATE
-   ============================================================ */
-
-function formatDate(value) {
-  if (!value) return "";
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value?.toDate) {
-    const date = value.toDate();
-
-    return date.toLocaleString("en-IN");
-  }
-
-  if (value instanceof Date) {
-    return value.toLocaleString("en-IN");
-  }
-
-  return String(value);
-}
-
-/* ============================================================
-   RECORD DATE
-   ============================================================ */
-
-function getCreatedDate(record) {
-  const value = record.createdAt;
-
-  if (!value) {
-    return "";
-  }
-
-  if (value?.toDate) {
-    return value.toDate().toLocaleString("en-IN");
-  }
-
-  if (value instanceof Date) {
-    return value.toLocaleString("en-IN");
-  }
-
-  return String(value);
-}
-
-/* ============================================================
-   MAIN PAGE
+   MAIN
    ============================================================ */
 
 export default function PersonDataPage() {
@@ -414,7 +509,7 @@ export default function PersonDataPage() {
   }, [router]);
 
   /* ==========================================================
-     LOAD DATA
+     LOAD
      ========================================================== */
 
   useEffect(() => {
@@ -430,11 +525,6 @@ export default function PersonDataPage() {
     setError("");
 
     try {
-      /*
-       * IMPORTANT:
-       * Only load the logged-in enumerator's records.
-       */
-
       const recordsRef = collection(db, "census2027_persons");
 
       const q = query(
@@ -455,24 +545,17 @@ export default function PersonDataPage() {
 
       setRecords(loaded);
     } catch (err) {
-      console.error("Load person records error:", err);
+      console.error("Load error:", err);
 
       /*
-       * Firestore may require an index
-       * for where + orderBy.
-       *
-       * Retry without orderBy so that
-       * the page remains usable.
+       * Fallback if composite index
+       * is not yet available.
        */
 
       try {
         const recordsRef = collection(db, "census2027_persons");
 
-        const q = query(
-          recordsRef,
-
-          where("enumeratorUid", "==", user.uid),
-        );
+        const q = query(recordsRef, where("enumeratorUid", "==", user.uid));
 
         const snapshot = await getDocs(q);
 
@@ -491,8 +574,6 @@ export default function PersonDataPage() {
         });
 
         setRecords(loaded);
-
-        setError("");
       } catch (secondError) {
         console.error(secondError);
 
@@ -527,20 +608,18 @@ export default function PersonDataPage() {
         .join(" ")
         .toLowerCase();
 
-      const matchesSearch = !term || searchable.includes(term);
-
-      const matchesHouse =
-        !house ||
-        String(record.censusNo || "")
-          .toLowerCase()
-          .includes(house);
-
-      return matchesSearch && matchesHouse;
+      return (
+        (!term || searchable.includes(term)) &&
+        (!house ||
+          String(record.censusNo || "")
+            .toLowerCase()
+            .includes(house))
+      );
     });
   }, [records, search, houseFilter]);
 
   /* ==========================================================
-     OPEN EDIT
+     EDIT
      ========================================================== */
 
   function openEdit(record) {
@@ -565,10 +644,6 @@ export default function PersonDataPage() {
     });
   }
 
-  /* ==========================================================
-     CLOSE EDIT
-     ========================================================== */
-
   function closeEdit() {
     setSelectedRecord(null);
 
@@ -576,10 +651,6 @@ export default function PersonDataPage() {
       ...EMPTY_FORM,
     });
   }
-
-  /* ==========================================================
-     EDIT CHANGE
-     ========================================================== */
 
   function handleEditChange(key, value) {
     setEditForm((previous) => ({
@@ -618,25 +689,11 @@ export default function PersonDataPage() {
     try {
       const recordRef = doc(db, "census2027_persons", selectedRecord.id);
 
-      /*
-       * Do not allow editing enumerator ownership.
-       */
-
-      const updateData = {
+      await updateDoc(recordRef, {
         ...editForm,
 
         /*
-         * Keep household linkage.
-         */
-
-        buildingNo: selectedRecord.buildingNo || "",
-
-        censusNo: selectedRecord.censusNo || "",
-
-        householdId: selectedRecord.householdId || "",
-
-        /*
-         * Keep ownership.
+         * Ownership is explicitly preserved.
          */
 
         enumeratorUid: user.uid,
@@ -650,23 +707,13 @@ export default function PersonDataPage() {
         censusYear: 2027,
 
         updatedAt: serverTimestamp(),
-      };
-
-      await updateDoc(recordRef, updateData);
+      });
 
       setMessage("তথ্য সফলভাবে আপডেট হয়েছে।");
 
       await loadRecords();
 
-      /*
-       * Close editor after successful update.
-       */
-
-      setSelectedRecord(null);
-
-      setEditForm({
-        ...EMPTY_FORM,
-      });
+      closeEdit();
 
       window.scrollTo({
         top: 0,
@@ -675,11 +722,7 @@ export default function PersonDataPage() {
     } catch (err) {
       console.error("Update error:", err);
 
-      if (err?.code === "permission-denied") {
-        setError("এই তথ্য পরিবর্তন করার অনুমতি নেই।");
-      } else {
-        setError(err?.message || "তথ্য আপডেট করা যায়নি।");
-      }
+      setError(err?.message || "তথ্য আপডেট করা যায়নি।");
     } finally {
       setSaving(false);
     }
@@ -707,9 +750,7 @@ export default function PersonDataPage() {
     setMessage("");
 
     try {
-      const recordRef = doc(db, "census2027_persons", record.id);
-
-      await deleteDoc(recordRef);
+      await deleteDoc(doc(db, "census2027_persons", record.id));
 
       setRecords((previous) =>
         previous.filter((item) => item.id !== record.id),
@@ -723,22 +764,38 @@ export default function PersonDataPage() {
     } catch (err) {
       console.error("Delete error:", err);
 
-      if (err?.code === "permission-denied") {
-        setError("এই তথ্য মুছে ফেলার অনুমতি নেই।");
-      } else {
-        setError(err?.message || "তথ্য মুছে ফেলা যায়নি।");
-      }
+      setError(err?.message || "তথ্য মুছে ফেলা যায়নি।");
     } finally {
       setDeleting(false);
     }
   }
 
   /* ==========================================================
-     REFRESH
+     DATE
      ========================================================== */
 
-  async function refreshData() {
-    await loadRecords();
+  function formatDate(value) {
+    if (!value) {
+      return "";
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (value?.toDate) {
+      return value.toDate().toLocaleDateString("en-IN");
+    }
+
+    return String(value);
+  }
+
+  function getCreatedDate(record) {
+    if (record.createdAt?.toDate) {
+      return record.createdAt.toDate().toLocaleString("en-IN");
+    }
+
+    return "";
   }
 
   /* ==========================================================
@@ -750,6 +807,28 @@ export default function PersonDataPage() {
 
     const inputClass =
       "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100";
+
+    /* SELECT */
+
+    if (field.type === "select") {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleEditChange(field.key, e.target.value)}
+          className={inputClass}
+        >
+          <option value="">-- নির্বাচন করুন --</option>
+
+          {(OPTIONS[field.key] || []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    /* TEXTAREA */
 
     if (field.type === "textarea") {
       return (
@@ -776,7 +855,7 @@ export default function PersonDataPage() {
      LOADING
      ========================================================== */
 
-  if (loading && !user) {
+  if (!user) {
     return (
       <main className="min-h-screen bg-slate-100 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow p-8">Loading...</div>
@@ -791,9 +870,7 @@ export default function PersonDataPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        {/* ====================================================
-            HEADER
-            ==================================================== */}
+        {/* HEADER */}
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
           <div className="bg-green-700 text-white px-5 py-5">
@@ -801,53 +878,42 @@ export default function PersonDataPage() {
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold">Census 2027</h1>
 
-                <p className="mt-1 text-green-100">
+                <p className="text-green-100 mt-1">
                   Individual Data — View & Manage
                 </p>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={refreshData}
-                  disabled={loading}
-                  className="rounded-xl bg-white/15 px-4 py-2 font-semibold hover:bg-white/25 disabled:opacity-50"
-                >
-                  {loading ? "লোড হচ্ছে..." : "↻ Refresh"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => router.push("/census-2027/person")}
-                  className="rounded-xl bg-white px-4 py-2 font-bold text-green-700 hover:bg-green-50"
-                >
-                  + নতুন তথ্য
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/census-2027/person")}
+                className="rounded-xl bg-white px-4 py-2 font-bold text-green-700 hover:bg-green-50"
+              >
+                + নতুন তথ্য
+              </button>
             </div>
           </div>
 
-          <div className="px-5 py-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="মোট তথ্য" value={records.length} />
+          {/* STATS */}
 
-              <StatCard label="Search Result" value={filteredRecords.length} />
+          <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="মোট তথ্য" value={records.length} />
 
-              <StatCard
-                label="Census House"
-                value={
-                  new Set(records.map((r) => r.censusNo).filter(Boolean)).size
-                }
-              />
+            <StatCard label="Search Result" value={filteredRecords.length} />
 
-              <StatCard label="Enumerator" value={user?.email || "-"} small />
-            </div>
+            <StatCard
+              label="Census House"
+              value={
+                new Set(
+                  records.map((record) => record.censusNo).filter(Boolean),
+                ).size
+              }
+            />
+
+            <StatCard label="Enumerator" value={user.email || "-"} small />
           </div>
         </div>
 
-        {/* ====================================================
-            ALERTS
-            ==================================================== */}
+        {/* ALERTS */}
 
         {message && (
           <div className="mb-5 rounded-xl border border-green-300 bg-green-50 px-5 py-4 text-green-800">
@@ -862,7 +928,7 @@ export default function PersonDataPage() {
         )}
 
         {/* ====================================================
-            EDIT PANEL
+            EDIT FORM
             ==================================================== */}
 
         {selectedRecord && (
@@ -870,12 +936,10 @@ export default function PersonDataPage() {
             <div className="bg-green-50 border-b border-green-200 px-5 py-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-800">
-                    তথ্য পরিবর্তন করুন
-                  </h2>
+                  <h2 className="text-xl font-bold">ব্যক্তির তথ্য পরিবর্তন</h2>
 
-                  <p className="text-sm text-slate-600 mt-1">
-                    {selectedRecord.name || "Unnamed person"}
+                  <p className="text-sm text-slate-600">
+                    {selectedRecord.name || "Unnamed"}
                     {" • "}
                     Census House: {selectedRecord.censusNo || "-"}
                   </p>
@@ -884,7 +948,7 @@ export default function PersonDataPage() {
                 <button
                   type="button"
                   onClick={closeEdit}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold"
                 >
                   ✕ বন্ধ করুন
                 </button>
@@ -892,10 +956,10 @@ export default function PersonDataPage() {
             </div>
 
             <form onSubmit={handleUpdate} className="p-5">
-              {/* HOUSEHOLD INFO */}
+              {/* HOUSE */}
 
-              <div className="mb-6 rounded-xl bg-slate-50 border border-slate-200 p-4">
-                <h3 className="font-bold text-slate-800 mb-3">গৃহের তথ্য</h3>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-6">
+                <h3 className="font-bold mb-3">গৃহের তথ্য</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <ReadOnlyBox
@@ -915,7 +979,7 @@ export default function PersonDataPage() {
                 </div>
               </div>
 
-              {/* ALL 40 FIELDS */}
+              {/* FIELDS */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {FIELDS.map((field) => (
@@ -924,8 +988,8 @@ export default function PersonDataPage() {
                     className={field.type === "textarea" ? "md:col-span-2" : ""}
                   >
                     <label className="block mb-2">
-                      <div className="flex gap-2">
-                        <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-slate-800 text-white text-xs font-bold">
+                      <div className="flex items-start gap-2">
+                        <span className="flex-shrink-0 flex items-center justify-center min-w-7 h-7 rounded-lg bg-slate-800 text-white text-xs font-bold px-2">
                           {field.no}
                         </span>
 
@@ -946,13 +1010,13 @@ export default function PersonDataPage() {
                 ))}
               </div>
 
-              {/* EDIT ACTIONS */}
+              {/* ACTION */}
 
               <div className="mt-7 pt-5 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 rounded-xl bg-green-700 px-6 py-4 text-white font-bold text-lg hover:bg-green-800 disabled:opacity-60"
+                  className="flex-1 rounded-xl bg-green-700 px-6 py-4 text-white text-lg font-bold hover:bg-green-800 disabled:opacity-60"
                 >
                   {saving ? "আপডেট হচ্ছে..." : "✓ পরিবর্তন সংরক্ষণ করুন"}
                 </button>
@@ -960,8 +1024,7 @@ export default function PersonDataPage() {
                 <button
                   type="button"
                   onClick={closeEdit}
-                  disabled={saving}
-                  className="rounded-xl border border-slate-300 px-6 py-4 font-bold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 px-6 py-4 font-bold"
                 >
                   বাতিল
                 </button>
@@ -977,9 +1040,7 @@ export default function PersonDataPage() {
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_250px_auto] gap-3">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Search
-              </label>
+              <label className="block text-sm font-semibold mb-2">Search</label>
 
               <input
                 type="search"
@@ -991,7 +1052,7 @@ export default function PersonDataPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold mb-2">
                 Census House
               </label>
 
@@ -1011,7 +1072,7 @@ export default function PersonDataPage() {
                   setSearch("");
                   setHouseFilter("");
                 }}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 font-semibold"
               >
                 Clear
               </button>
@@ -1020,48 +1081,33 @@ export default function PersonDataPage() {
         </section>
 
         {/* ====================================================
-            RECORD LIST
+            LIST
             ==================================================== */}
 
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">
-                সংগৃহীত ব্যক্তিগত তথ্য
-              </h2>
+          <div className="px-5 py-4 border-b border-slate-200">
+            <h2 className="text-xl font-bold">সংগৃহীত ব্যক্তিগত তথ্য</h2>
 
-              <p className="text-sm text-slate-500">
-                {filteredRecords.length} টি record দেখানো হচ্ছে
-              </p>
-            </div>
+            <p className="text-sm text-slate-500">
+              {filteredRecords.length} টি record
+            </p>
           </div>
 
           {loading ? (
-            <div className="p-10 text-center text-slate-500">
-              <div className="text-3xl mb-2">⏳</div>
-              তথ্য লোড হচ্ছে...
-            </div>
+            <div className="p-10 text-center">⏳ তথ্য লোড হচ্ছে...</div>
           ) : filteredRecords.length === 0 ? (
             <div className="p-10 text-center">
-              <div className="text-5xl mb-3">📋</div>
+              <div className="text-5xl">📋</div>
 
-              <h3 className="text-lg font-bold text-slate-700">
-                কোনও তথ্য পাওয়া যায়নি
-              </h3>
-
-              <p className="text-slate-500 mt-1">
-                Search পরিবর্তন করুন অথবা নতুন তথ্য যোগ করুন।
-              </p>
+              <p className="font-bold text-lg mt-3">কোনও তথ্য পাওয়া যায়নি</p>
             </div>
           ) : (
             <>
-              {/* =================================================
-                  DESKTOP TABLE
-                  ================================================= */}
+              {/* DESKTOP */}
 
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+                  <thead className="bg-slate-50">
                     <tr>
                       <th className="px-4 py-3 text-left">#</th>
 
@@ -1077,23 +1123,17 @@ export default function PersonDataPage() {
 
                       <th className="px-4 py-3 text-left">মোবাইল</th>
 
-                      <th className="px-4 py-3 text-left">জমার তারিখ</th>
-
                       <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
                     {filteredRecords.map((record, index) => (
-                      <tr key={record.id} className="hover:bg-green-50/40">
-                        <td className="px-4 py-4 font-semibold text-slate-500">
-                          {index + 1}
-                        </td>
+                      <tr key={record.id} className="hover:bg-green-50">
+                        <td className="px-4 py-4">{index + 1}</td>
 
                         <td className="px-4 py-4">
-                          <div className="font-bold text-slate-800">
-                            {record.name || "-"}
-                          </div>
+                          <div className="font-bold">{record.name || "-"}</div>
 
                           <div className="text-xs text-slate-500">
                             {record.aadhaarNumber
@@ -1126,16 +1166,12 @@ export default function PersonDataPage() {
                           {record.mobileNumber || "-"}
                         </td>
 
-                        <td className="px-4 py-4 text-xs">
-                          {getCreatedDate(record)}
-                        </td>
-
                         <td className="px-4 py-4">
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => openEdit(record)}
-                              className="rounded-lg bg-blue-600 px-3 py-2 text-white font-semibold hover:bg-blue-700"
+                              className="rounded-lg bg-blue-600 px-3 py-2 text-white font-bold"
                             >
                               Edit
                             </button>
@@ -1144,7 +1180,7 @@ export default function PersonDataPage() {
                               type="button"
                               onClick={() => handleDelete(record)}
                               disabled={deleting}
-                              className="rounded-lg bg-red-600 px-3 py-2 text-white font-semibold hover:bg-red-700 disabled:opacity-50"
+                              className="rounded-lg bg-red-600 px-3 py-2 text-white font-bold disabled:opacity-50"
                             >
                               Delete
                             </button>
@@ -1156,30 +1192,28 @@ export default function PersonDataPage() {
                 </table>
               </div>
 
-              {/* =================================================
-                  MOBILE / TABLET CARDS
-                  ================================================= */}
+              {/* MOBILE */}
 
               <div className="lg:hidden divide-y divide-slate-200">
                 {filteredRecords.map((record, index) => (
                   <div key={record.id} className="p-5">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex justify-between gap-3">
                       <div>
-                        <div className="text-xs text-slate-500 mb-1">
+                        <div className="text-xs text-slate-500">
                           #{index + 1}
                         </div>
 
-                        <h3 className="text-lg font-bold text-slate-800">
+                        <h3 className="text-lg font-bold">
                           {record.name || "নাম নেই"}
                         </h3>
                       </div>
 
-                      <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                      <span className="bg-green-100 text-green-700 rounded-lg px-3 py-1 h-fit text-xs font-bold">
                         Census {record.censusNo || "-"}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
+                    <div className="grid grid-cols-2 gap-3 mt-4">
                       <InfoItem
                         label="Building No."
                         value={record.buildingNo}
@@ -1205,7 +1239,7 @@ export default function PersonDataPage() {
                       />
                     </div>
 
-                    <div className="mt-4 text-xs text-slate-500">
+                    <div className="text-xs text-slate-500 mt-4">
                       Submitted: {getCreatedDate(record)}
                     </div>
 
@@ -1213,7 +1247,7 @@ export default function PersonDataPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(record)}
-                        className="flex-1 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"
+                        className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-white font-bold"
                       >
                         ✎ Edit
                       </button>
@@ -1222,7 +1256,7 @@ export default function PersonDataPage() {
                         type="button"
                         onClick={() => handleDelete(record)}
                         disabled={deleting}
-                        className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                        className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-white font-bold disabled:opacity-50"
                       >
                         🗑 Delete
                       </button>
@@ -1233,21 +1267,13 @@ export default function PersonDataPage() {
             </>
           )}
         </section>
-
-        {/* ====================================================
-            FOOTER
-            ==================================================== */}
-
-        <div className="text-center text-xs text-slate-500 py-8">
-          Census 2027 — Individual Data Management
-        </div>
       </div>
     </main>
   );
 }
 
 /* ============================================================
-   STAT CARD
+   COMPONENTS
    ============================================================ */
 
 function StatCard({ label, value, small = false }) {
@@ -1256,9 +1282,7 @@ function StatCard({ label, value, small = false }) {
       <div className="text-xs text-slate-500">{label}</div>
 
       <div
-        className={`mt-1 font-bold text-slate-800 ${
-          small ? "text-xs break-all" : "text-2xl"
-        }`}
+        className={`mt-1 font-bold ${small ? "text-xs break-all" : "text-2xl"}`}
       >
         {value}
       </div>
@@ -1266,34 +1290,40 @@ function StatCard({ label, value, small = false }) {
   );
 }
 
-/* ============================================================
-   READ ONLY BOX
-   ============================================================ */
-
 function ReadOnlyBox({ label, value }) {
   return (
     <div>
-      <div className="text-xs font-semibold text-slate-500 mb-1">{label}</div>
+      <div className="text-xs text-slate-500 mb-1">{label}</div>
 
-      <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 font-semibold text-slate-700">
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 font-semibold">
         {value || "-"}
       </div>
     </div>
   );
 }
 
-/* ============================================================
-   INFO ITEM
-   ============================================================ */
-
 function InfoItem({ label, value }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
       <div className="text-xs text-slate-500">{label}</div>
 
-      <div className="mt-1 font-semibold text-slate-700 break-words">
-        {value || "-"}
-      </div>
+      <div className="font-semibold mt-1 break-words">{value || "-"}</div>
     </div>
   );
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value?.toDate) {
+    return value.toDate().toLocaleDateString("en-IN");
+  }
+
+  return String(value);
 }
