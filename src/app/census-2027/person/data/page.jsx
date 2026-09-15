@@ -607,7 +607,7 @@ export default function PersonDataPage() {
         record.name,
         record.buildingNo,
         record.censusNo,
-        record.householdId,
+        record.householdNo,
         record.mobileNumber,
         record.aadhaarNumber,
         record.voterId,
@@ -982,8 +982,8 @@ export default function PersonDataPage() {
                   />
 
                   <ReadOnlyBox
-                    label="Household ID"
-                    value={selectedRecord.householdId}
+                    label="Household No."
+                    value={selectedRecord.householdNo}
                   />
                 </div>
               </div>
@@ -1243,8 +1243,8 @@ export default function PersonDataPage() {
                       <InfoItem label="মোবাইল" value={record.mobileNumber} />
 
                       <InfoItem
-                        label="Household ID"
-                        value={record.householdId}
+                        label="Household No."
+                        value={record.householdNo}
                       />
                     </div>
 

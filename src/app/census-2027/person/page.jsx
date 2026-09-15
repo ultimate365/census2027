@@ -10,7 +10,10 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 
 import { useRouter } from "next/navigation";
@@ -147,13 +150,13 @@ const OPTIONS = {
 
   drivingLicence: ["Yes", "No"],
 
-  childrenCurrentlyPresent: Array.from({ length: 16 }, (_, i) => String(i)),
+  childrenCurrentlyPresent: Array.from({ length: 8 }, (_, i) => String(i)),
 
-  childrenEverBorn: Array.from({ length: 16 }, (_, i) => String(i)),
+  childrenEverBorn: Array.from({ length: 8 }, (_, i) => String(i)),
 
-  childrenBornLastYear: Array.from({ length: 6 }, (_, i) => String(i)),
+  childrenBornLastYear: Array.from({ length: 4 }, (_, i) => String(i)),
 
-  totalBankAccounts: Array.from({ length: 11 }, (_, i) => String(i)),
+  totalBankAccounts: Array.from({ length: 6 }, (_, i) => String(i)),
 };
 
 /* ============================================================
@@ -521,6 +524,12 @@ export default function CensusPersonPage() {
 
   const [authLoading, setAuthLoading] = useState(true);
 
+  const [households, setHouseholds] = useState([]);
+
+  const [householdsLoading, setHouseholdsLoading] = useState(true);
+
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
+
   const [form, setForm] = useState({
     ...INITIAL_FORM,
   });
@@ -528,7 +537,7 @@ export default function CensusPersonPage() {
   const [householdInfo, setHouseholdInfo] = useState({
     buildingNo: "",
     censusNo: "",
-    householdId: "",
+    householdNo: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -569,6 +578,29 @@ export default function CensusPersonPage() {
             email: currentUser.email || "",
           });
         }
+
+        const householdSnapshot = await getDocs(
+          query(
+            collection(db, "census2027"),
+            where("enumeratorUid", "==", currentUser.uid),
+          ),
+        );
+
+        const submittedHouseholds = householdSnapshot.docs
+          .map((item) => ({
+            id: item.id,
+            ...item.data(),
+          }))
+          .filter((household) => String(household.householdNo ?? "").trim())
+          .sort((first, second) =>
+            String(first.householdNo || "").localeCompare(
+              String(second.householdNo || ""),
+              undefined,
+              { numeric: true },
+            ),
+          );
+
+        setHouseholds(submittedHouseholds);
       } catch (profileError) {
         console.error("Profile error:", profileError);
 
@@ -577,6 +609,8 @@ export default function CensusPersonPage() {
 
           email: currentUser.email || "",
         });
+      } finally {
+        setHouseholdsLoading(false);
       }
 
       setAuthLoading(false);
@@ -596,11 +630,19 @@ export default function CensusPersonPage() {
     }));
   }
 
-  function handleHouseholdChange(key, value) {
-    setHouseholdInfo((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
+  function handleHouseholdSelect(event) {
+    const householdId = event.target.value;
+    const selectedHousehold = households.find(
+      (household) => household.id === householdId,
+    );
+
+    setSelectedHouseholdId(householdId);
+
+    setHouseholdInfo({
+      buildingNo: selectedHousehold?.buildingNo || "",
+      censusNo: selectedHousehold?.censusNo || "",
+      householdNo: selectedHousehold?.householdNo || "",
+    });
   }
 
   /* ==========================================================
@@ -667,6 +709,17 @@ export default function CensusPersonPage() {
       return;
     }
 
+    if (!selectedHouseholdId) {
+      setError("প্রথমে একটি Household নির্বাচন করুন।");
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      return;
+    }
+
     const validation = validate();
 
     if (validation) {
@@ -690,7 +743,7 @@ export default function CensusPersonPage() {
 
         censusNo: householdInfo.censusNo || "",
 
-        householdId: householdInfo.householdId || "",
+        householdNo: householdInfo.householdNo || "",
 
         enumeratorUid: user.uid,
 
@@ -722,8 +775,10 @@ export default function CensusPersonPage() {
       setHouseholdInfo({
         buildingNo: "",
         censusNo: "",
-        householdId: "",
+        householdNo: "",
       });
+
+      setSelectedHouseholdId("");
 
       window.scrollTo({
         top: 0,
@@ -754,8 +809,10 @@ export default function CensusPersonPage() {
     setHouseholdInfo({
       buildingNo: "",
       censusNo: "",
-      householdId: "",
+      householdNo: "",
     });
+
+    setSelectedHouseholdId("");
 
     setError("");
     setMessage("");
@@ -922,24 +979,50 @@ export default function CensusPersonPage() {
             </div>
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="md:col-span-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Household No. - Head Name
+                </label>
+
+                <select
+                  value={selectedHouseholdId}
+                  onChange={handleHouseholdSelect}
+                  disabled={householdsLoading || households.length === 0}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {householdsLoading
+                      ? "Household data load হচ্ছে..."
+                      : households.length === 0
+                        ? "কোনো submitted household পাওয়া যায়নি"
+                        : "-- Household নির্বাচন করুন --"}
+                  </option>
+
+                  {households.map((household) => (
+                    <option key={household.id} value={household.id}>
+                      {household.householdNo} -{" "}
+                      {household.headName || "Unnamed"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <HouseholdInput
                 label="Building No."
                 value={householdInfo.buildingNo}
-                onChange={(value) => handleHouseholdChange("buildingNo", value)}
+                readOnly
               />
 
               <HouseholdInput
                 label="Census House No."
                 value={householdInfo.censusNo}
-                onChange={(value) => handleHouseholdChange("censusNo", value)}
+                readOnly
               />
 
               <HouseholdInput
-                label="Household ID"
-                value={householdInfo.householdId}
-                onChange={(value) =>
-                  handleHouseholdChange("householdId", value)
-                }
+                label="Household No."
+                value={householdInfo.householdNo}
+                readOnly
               />
             </div>
           </section>
@@ -1087,7 +1170,7 @@ function FormSection({ title, subtitle, fields, renderField }) {
    HOUSEHOLD INPUT
    ============================================================ */
 
-function HouseholdInput({ label, value, onChange }) {
+function HouseholdInput({ label, value, readOnly = false }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -1097,7 +1180,9 @@ function HouseholdInput({ label, value, onChange }) {
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        readOnly={readOnly}
+        tabIndex={readOnly ? -1 : undefined}
+        aria-readonly={readOnly}
         className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
         placeholder={label}
       />
